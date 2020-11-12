@@ -25,7 +25,6 @@ class Simulator:
         agent_locations = {}
 
         for i in range(1, agent_num + 1):
-
             agent_types = list(Simulator.agent_init_functions.keys())
             print("Agent N_{} : Please enter the agent type (one of the following {}) ?".format(i, agent_types))
             agent_type = input()
