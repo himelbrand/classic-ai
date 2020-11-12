@@ -8,10 +8,15 @@ import heapq
 class Graph:
 
     def __init__(self,graph,weights):
-        self.graph = graph            #type: Dict[int,List[Tuple[int,float]]]
-        self.weights = weights        #type: Dict[Tuple[int,int],int]
+        self.graph = graph            #type: Dict[int,List[int]]         # Graph : key - node ,
+                                                                         # value - list of it's neighbors
+
+        self.weights = weights        #type: Dict[Tuple[int,int],int]    # List of blocked edges ( for each edge two
+                                                                        # tuples (node1,node2 ) and (node2,node1) )
+
 
     def get_neigbours_and_weights (self,node ):
+        """For node , return the list of tuples ( neigbhor , edge_weight ) """
         neighbors =  self.graph[node]
         neigbours_and_weights = []
 
@@ -21,15 +26,21 @@ class Graph:
         return neigbours_and_weights
 
     def is_neighbours(self,n1,n2):
+        # Check whether two nodes are neighbors
         neigbours_and_weights = self.get_neigbours_and_weights(n1)
 
         neigbours, _ = zip(*neigbours_and_weights)
         return n2 in neigbours
 
     def get_weight(self,node1,node2):
-        return  self.weights[(min(node1,node2),max(node1,node2))]
+        # Get weight of the edge between two nodes and infinity if there is no edge
+        return  self.weights.get([(min(node1,node2),max(node1,node2))],float("inf"))
 
     def get_shortest_path_Dijk(self, node1, node2, blocked=None):
+
+        """Compute shortest path between two nodes ( Dijkstra ) without using the edges in the blocked list.
+        Return value : The weight of the shortest path and the list of nodes - the path itself , or infinity and empty list
+         if there is no such a path"""
         if blocked is None:
             blocked = []
 
@@ -69,6 +80,7 @@ class Graph:
                 break
             temp_node = node_parents[temp_node]
         path.reverse()
+
         return node_dists[node2][0],path
 
 
