@@ -104,7 +104,7 @@ class SaboteurAgent(Agent):
             print("My previous action failed , terminating .....")
             return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
 
-        # If the agent is on the edge keep moving towards the destination
+        # If the agent is on the edge keep moving towards the destination (node2)
         if node1 != node2:
             print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
                   .format(node1=node1, node2=node2, dist=distance))
@@ -180,11 +180,15 @@ class GreedyAgent(Agent):
         print("**********************  Greedy agent  ***************************")
         is_previous_succeed = observation["agents_last_action"][self.id]
 
+        # If the previous action failed - terminate and don't do anything ( no-op )
         if not is_previous_succeed or self.is_terminated:
             self.is_terminated = True
             return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
 
+        # If the agent is on the way somewhere , find next action to send ( according to the path )
+        # Or if the agent arrived to the destination return {}
         if self.traversing_in_progress:
+            # Return the next traverse command
             next_action = self.next_traverse_action(observation)
 
             if next_action is None:
@@ -194,27 +198,34 @@ class GreedyAgent(Agent):
             if next_action != {}:
                 return next_action
 
+        # Compute the next destination node ( the nearest node with people )
         self.compute_destination(observation)
 
+        # If can't compute the next destination , terminate
         if self.current_destination is None:
             self.is_terminated = True
             return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
 
+        # Return the next traverse command ( given currently computed destination )
         next_action = self.next_traverse_action(observation)
 
         return next_action
 
     def compute_destination(self, observation):
+        """Find the closest node with people and update destination and path"""
 
         blocked_edges = observation["blocked_edges"]
-        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
         graph = observation["graph"]
         current_location = observation["agents_location"][self.get_id()]
         node2 = current_location[1]
 
+        # Find nodes where there is more than one men
+        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
+
         temp_distance = float("inf")
         self.current_destination = None
         self.current_path = []
+
         for node in people_locations:
             distance, path = graph.get_shortest_path_Dijk(node2, node, blocked_edges)
             if distance < temp_distance:
@@ -227,20 +238,27 @@ class GreedyAgent(Agent):
         blocked_edges = observation["blocked_edges"]
 
         graph = observation["graph"]
-        # The Agent is on the edge : keep going towards the node2
+        # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
+        # If the agent arrived to the destination , return empty dict
         if node2 == self.current_destination or self.current_destination is None:
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
+        # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
+
+            # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
 
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
+
+        # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
+        # And begin moving
         else:
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
