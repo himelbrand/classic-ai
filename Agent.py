@@ -42,6 +42,7 @@ class HumanAgent(Agent):
 
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
+        print()
         print("**********************  Human agent  ***************************")
 
         # Check whether my previous action succeed , if not - terminate
@@ -92,6 +93,7 @@ class SaboteurAgent(Agent):
         super().__init__("saboteur")
 
     def next_action(self, observation: Dict):
+        print()
         print("**********************  Sabateur agent  ***************************")
 
         """Main interface function of each agent - it receives the state  , and returns the action"""
@@ -177,6 +179,7 @@ class GreedyAgent(Agent):
 
     def next_action(self, observation: Dict):
 
+        print()
         print("**********************  Greedy agent  ***************************")
         is_previous_succeed = observation["agents_last_action"][self.id]
 
@@ -240,17 +243,21 @@ class GreedyAgent(Agent):
         graph = observation["graph"]
         # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
+            print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
+                  .format(node1=node1, node2=node2, dist=distance))
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
         # If the agent arrived to the destination , return empty dict
         if node2 == self.current_destination or self.current_destination is None:
+            print("Arrived to destination node {node2}".format(node2=self.current_destination))
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
-
+            print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+                 .format(node1=self.current_path[0],path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -260,9 +267,52 @@ class GreedyAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
+            print("Something is wrong . Computing the path to destination node {node}".format(node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
+            print("Begin to move .")
+
             self.current_path = self.current_path[1:]
+            print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+                  .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             self.traversing_in_progress = True
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
+
+
+class PlanningAgent(Agent):
+    def create_agent(cls):
+        """Agent factory function"""
+        return GreedyAgent()
+
+    def __init__(self):
+        self.current_destination = None  # Current destination node : may be any node
+        self.current_path = []  # List of the nodes that are remain to agent to pass
+        self.traversing_in_progress = False  # Whether the agent is on the way somewhere
+        super().__init__("planning")
+
+    def graph_reduction(self,observation):
+        blocked_edges = observation["blocked_edges"]
+        graph = observation["graph"]
+        current_location = observation["agents_location"][self.get_id()]
+        source_node = current_location[1]
+
+        # Find nodes where there is more than one men
+        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
+        people_locations_copy = people_locations.copy()
+
+        new_graph = {}
+        new_edges = {}
+
+        while people_locations != []:
+            for node in people_locations:
+                weight,path = graph.get_shortest_path_Dijk(source_node,node,blocked=blocked_edges)
+                if len(set(path[1:-1]).intersection(people_locations_copy)) > 0:
+                    continue
+
+                new_graph[node].append(source_node)
+                new_graph[source_node].append(node)
+                new_edges[(min(node, source_node), max(node, source_node))] = weight
+
+            source_node = people_locations[0]
+            people_locations = people_locations[1:]

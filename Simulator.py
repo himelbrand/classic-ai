@@ -11,6 +11,9 @@ class Simulator:
                             "sabateur": Agent.SaboteurAgent.create_agent}  # Agent type and the function that creates particular agent
     deadline = 0
 
+    def __init__(self):
+        self.time_passed = 0
+
     def initialize_env(self):
         """Environment initialization and agents creating function """
 
@@ -66,11 +69,40 @@ class Simulator:
                     continue
                 # Recieve action from the current agent
                 action = agent.next_action(observation)
+
+                self.time_passed += 1
+
                 # Apply action and receive the last observation
                 observation = env.apply_action(action)
 
+                if self.is_simulation_finished(agent_list,observation):
+                    is_finished = True
+                    break
+
     def print_statistics(self):
         ...
+
+    def record_statistics(self, observation):
+        ...
+
+    def is_simulation_finished(self,agent_list,observation):
+        if self.time_passed > Simulator.deadline:
+            print("Finishing the simulation : The deadline was reached")
+            return True
+
+        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
+
+        if people_locations == []:
+            print("Finishing the simulation : All the people were collected")
+            return True
+
+        active_agents = [agent for agent in agent_list if not agent.is_agent_terminated()]
+
+        if active_agents == []:
+            print("Finishing the simulation : All the agents terminated")
+            return True
+
+        return False
 
 
 if __name__ == '__main__':

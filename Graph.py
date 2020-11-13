@@ -34,7 +34,7 @@ class Graph:
         # Get weight of the edge between two nodes and infinity if there is no edge
         return self.weights.get((min(node1, node2), max(node1, node2)), float("inf"))
 
-    def get_shortest_path_Dijk(self, node1, node2, blocked=None):
+    def get_shortest_path_Dijk(self, node1, node2, blocked=None,nodes_to_avoid = None):
 
         """Compute shortest path between two nodes ( Dijkstra ) without using the edges in the blocked list.
         Return value : The weight of the shortest path and the list of nodes - the path itself , or infinity and empty list
@@ -42,6 +42,8 @@ class Graph:
         if blocked is None:
             blocked = []
 
+        if nodes_to_avoid is None:
+            nodes_to_avoid = []
         nodes = self.graph.keys()
         node_parents = {node: None for node in nodes}
         node_dists = {node: [float("inf"), node] for node in nodes}
@@ -57,10 +59,11 @@ class Graph:
 
             neighbs_weights = self.get_neigbours_and_weights(node)
 
-            print(neighbs_weights)
+
             for neighb, weight in neighbs_weights:
-                if (node, neighb) in blocked:
+                if (node, neighb) in blocked or neighb in nodes_to_avoid:
                     continue
+
                 if node_dists[neighb][0] > dist + weight:
                     node_dists[neighb][0] = dist + weight
                     node_parents[neighb] = node

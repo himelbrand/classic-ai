@@ -70,6 +70,7 @@ class Environment:
         It receives an action ( dictionary ) of the following format {\"action_tag\" : ..., \"action_details\" : ....} and
         invokes the function from action_reaction dict according to action_tag
         The function returns current environment state"""
+        print()
         print("*************** Environment*******************")
         print("Environment recieved an action {}".format(action))
 
@@ -90,7 +91,7 @@ class Environment:
         people_collected = 0
 
         # If the agent is in node ( not on the edge ) check if the distination node is its neighbor
-        if node1 == node2 and self.graph.is_neighbours(node1, dist_node):
+        if node1 == node2 and self.graph.is_neighbours(node1, dist_node) and not (node2,dist_node) in self.blocked_edges :
             # Get (node1,dist_node) edge weight
 
             edge_weight = self.graph.get_weight(node1, dist_node)
@@ -101,7 +102,7 @@ class Environment:
             action_succeed = True
 
         # If the agent is already inside the edge , check whether destination node is correct
-        elif node2 == dist_node:
+        elif node1 != node2 and node2 == dist_node:
 
             # Move the agent one step on the edge
             distance -= 1
