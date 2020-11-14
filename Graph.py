@@ -82,3 +82,44 @@ class Graph:
         path.reverse()
 
         return node_dists[node2][0], path
+
+    def min_spanning_tree_kruskal(self,blocked_edges):
+        graph = self.graph
+        weights = self.weights
+
+        F = []
+        nodes = list(graph.keys())
+
+        sets = [{node} for node in nodes]
+
+        sorted_edges_and_weights = [(edge_and_w[0],edge_and_w[1]) for edge_and_w in sorted(weights.items(),key=lambda x : x[1])]
+
+        tree_edges = []
+        tree_weight = 0
+        for edge,weight in sorted_edges_and_weights:
+            if edge in blocked_edges:
+                continue
+            node1, node2 = edge
+            set1 = self.find_set(node1,sets)
+            if node2 in set1:
+                continue
+            set2 = self.find_set(node2,sets)
+            sets.remove(set1)
+            sets.remove(set2)
+            sets.append(set1 | set2)
+            tree_edges.append((node1,node2))
+            tree_weight += weight
+            if len(sets) == 1:
+                break
+
+        if len(sets) > 1:
+            tree_edges = None
+            tree_weight = float("inf")
+
+        return tree_edges,tree_weight
+
+    def find_set(self,item,set_list):
+        for set in set_list:
+            if item in set:
+                return set
+        return None

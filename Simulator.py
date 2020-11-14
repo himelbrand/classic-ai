@@ -2,13 +2,14 @@ import Env1
 import Agent
 from typing import List
 
-global_file_name = "graph1.json"
+global_file_name = "graph2.json"
 
 
 class Simulator:
     agent_init_functions = {"human": Agent.HumanAgent.create_agent,
                             "greedy": Agent.GreedyAgent.create_agent,
-                            "sabateur": Agent.SaboteurAgent.create_agent}  # Agent type and the function that creates particular agent
+                            "sabateur": Agent.SaboteurAgent.create_agent,
+                            "planning":Agent.PlanningAgent.create_agent}  # Agent type and the function that creates particular agent
     deadline = 0
 
     def __init__(self):

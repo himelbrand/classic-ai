@@ -257,7 +257,7 @@ class GreedyAgent(Agent):
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
             print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-                 .format(node1=self.current_path[0],path=self.current_path, node2=self.current_destination))
+                  .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -267,7 +267,8 @@ class GreedyAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            print("Something is wrong . Computing the path to destination node {node}".format(node=self.current_destination))
+            print("Something is wrong . Computing the path to destination node {node}".format(
+                node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
@@ -281,9 +282,11 @@ class GreedyAgent(Agent):
 
 
 class PlanningAgent(Agent):
+
+    @classmethod
     def create_agent(cls):
         """Agent factory function"""
-        return GreedyAgent()
+        return PlanningAgent()
 
     def __init__(self):
         self.current_destination = None  # Current destination node : may be any node
@@ -291,7 +294,7 @@ class PlanningAgent(Agent):
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
         super().__init__("planning")
 
-    def graph_reduction(self,observation):
+    def graph_reduction(self, observation):
         blocked_edges = observation["blocked_edges"]
         graph = observation["graph"]
         current_location = observation["agents_location"][self.get_id()]
@@ -301,18 +304,29 @@ class PlanningAgent(Agent):
         people_locations = [node for node, people in observation["people_location"].items() if people > 0]
         people_locations_copy = people_locations.copy()
 
-        new_graph = {}
         new_edges = {}
-
+        new_graph = {node: [] for node in people_locations}
+        new_graph[source_node] = []
         while people_locations != []:
             for node in people_locations:
-                weight,path = graph.get_shortest_path_Dijk(source_node,node,blocked=blocked_edges)
-                if len(set(path[1:-1]).intersection(people_locations_copy)) > 0:
-                    continue
+                weight, path = graph.get_shortest_path_Dijk(source_node, node, blocked=blocked_edges)
+                if weight < float("inf") and len(set(path[1:-1]).intersection(people_locations_copy)) == 0:
+                    new_graph[node].append(source_node)
+                    new_graph[source_node].append(node)
+                    new_edges[(min(node, source_node), max(node, source_node))] = weight
 
-                new_graph[node].append(source_node)
-                new_graph[source_node].append(node)
-                new_edges[(min(node, source_node), max(node, source_node))] = weight
+
+                #TODO: There is a problem that not all pathes will be presented ( for example two equal weight pathes )
+                #TODO: The dijekstra should return all equally weighted pathes
 
             source_node = people_locations[0]
             people_locations = people_locations[1:]
+
+        new_graph = Gr.Graph(new_graph, new_edges)
+        sp_tree = new_graph.min_spanning_tree_kruskal([])
+        return new_graph
+
+    def next_action(self, observation: Dict):
+        new_graph = self.graph_reduction(observation)
+        """Main interface function of each agent - it receives the state  , and returns the action"""
+        return {"action_tag": "no-op", "action_details": {}}

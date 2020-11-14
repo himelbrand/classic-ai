@@ -171,6 +171,6 @@ class Environment:
 
 
 if __name__ == '__main__':
-    g, _, _ = load_environment("graph1.json")
-    res = g.get_shortest_path_Dijk(1, 4, [(1, 3), (3, 1), (3, 4), (4, 3), (2, 4), (4, 2)])
+    g, _, _ = load_environment("graph2.json")
+    res = g.min_spanning_tree_kruskal([])
     print(res)
