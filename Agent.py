@@ -4,7 +4,10 @@ import Graph as Gr
 """Parent type of all the agents"""
 
 class Link:
-    def __init__(self):
+    def __init__(self,prev,data):
+        self.prev = prev
+        self.data = data
+
 
 class Agent:
     next_id = 0
@@ -336,7 +339,7 @@ class PlanningAgent(Agent):
 
 
     def make_plan_A_star(self,problem,heuristic,limit,):
-        open = [self.initial_state(problem)]
+        open = [Link(None,self.initial_state(problem))]
 
         counter = 0
 
@@ -353,12 +356,37 @@ class PlanningAgent(Agent):
 
 
     def initial_state(self,problem):
-        ...
+        new_graph = self.graph_reduction(problem)
+
+        return {"abstract_graph":new_graph,
+                "my_location": problem["agents_location"][self.get_id()],
+                "people_location": problem["people_location"],
+                "current_distance":0,
+                "f_value": None}
+
+
 
     def goal_test(self,node):
-        ...
+        data = node.data
 
-    def get_distance(self,node):
-        ...
+        node_with_people = [n for n,p in data["people_location"] if p > 0]
 
-    def expand(self,node,problem):
+        return node_with_people != []
+
+
+    def expand(self,heuristic,parent_node,problem):
+
+        data = parent_node.data
+
+        parent_graph = data["abstract_graph"] #type: Gr.Graph
+        _,current_location,_ = data["my_location"]
+
+        neighb_and_weight = parent_graph.get_neigbours_and_weights(current_location)
+
+        child_nodes_list = []
+        new_people_location = data["people_location"]
+        for child_node,weight in neighb_and_weight:
+            ...
+
+
+
