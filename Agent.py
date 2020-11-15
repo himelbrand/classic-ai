@@ -3,6 +3,8 @@ import Graph as Gr
 
 """Parent type of all the agents"""
 
+class Link:
+    def __init__(self):
 
 class Agent:
     next_id = 0
@@ -292,6 +294,7 @@ class PlanningAgent(Agent):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
+
         super().__init__("planning")
 
     def graph_reduction(self, observation):
@@ -330,3 +333,32 @@ class PlanningAgent(Agent):
         new_graph = self.graph_reduction(observation)
         """Main interface function of each agent - it receives the state  , and returns the action"""
         return {"action_tag": "no-op", "action_details": {}}
+
+
+    def make_plan_A_star(self,problem,heuristic,limit,):
+        open = [self.initial_state(problem)]
+
+        counter = 0
+
+        g = 0
+
+        while counter < limit:
+            if open == []:
+                return None
+            node = open.pop(0)
+            g = self.get_distance(node)
+            new_nodes = self.expand(heuristic,node,problem)
+            open.extend(new_nodes)
+            open.sort(key= lambda x:x)
+
+
+    def initial_state(self,problem):
+        ...
+
+    def goal_test(self,node):
+        ...
+
+    def get_distance(self,node):
+        ...
+
+    def expand(self,node,problem):
