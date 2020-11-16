@@ -384,9 +384,7 @@ class PlanningAgent(Agent):
         neighb_and_weight = parent_graph.get_neigbours_and_weights(current_location)
 
         child_nodes_list = []
-        new_people_location = data["people_location"]
+
         for child_node,weight in neighb_and_weight:
-            ...
-
-
-
+            new_people_location = data["people_location"].copy()
+            
