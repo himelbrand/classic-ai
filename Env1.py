@@ -25,8 +25,8 @@ def load_environment(file_name):
         graph[node2].append(node1)
         weights[(min(node1, node2), max(node1, node2))] = weight
 
-    print(graph)
-    print(weights)
+    # print(graph)
+    # print(weights)
 
     graph = Gr.Graph(graph, weights)
 
@@ -50,7 +50,7 @@ class Environment:
         self.agents_last_action = {}  # type: Dict[int,bool]                # The result of each agent's last action , True if the actions succeed , False otherwise
 
         # Dictionary with functions that should be activated for each action
-        self.actions_reactions = {"traverse": self.traverse, "no-op": self.no_op_action, "block": self.block}
+        self.actions_reactions = {"traverse": self.traverse, "no-op": self.no_op_action, "block": self.block, "terminate":self.terminate_action}
 
     def initialize(self):
 
@@ -58,9 +58,9 @@ class Environment:
         for agent in self.agents_location.keys():
             node1, node2, dist = self.agents_location[agent]
 
-            if node1 == node2:
-                self.people_collected[agent] = self.people_location.get(node1, 0)
-                self.people_location[node1] = 0
+            # if node1 == node2:
+            self.people_collected[agent] = 0
+            #     self.people_location[node1] = 0
 
             # Initialize agents_last_action dictionary
             self.agents_last_action[agent] = True
@@ -71,9 +71,13 @@ class Environment:
         invokes the function from action_reaction dict according to action_tag
         The function returns current environment state"""
         print()
-        print("*************** Environment*******************")
-        print("Environment recieved an action {}".format(action))
-
+        # print("*************** Environment*******************")
+        # print("Environment recieved an action {}".format(action))
+        agent = action['action_details']['agent_id']
+        current_node = self.agents_location[agent][0]
+        people_collected = self.people_location.get(current_node, 0)
+        self.people_location[current_node] = 0
+        self.people_collected[agent] += people_collected
         resulting_observ = self.actions_reactions[action["action_tag"]](action["action_details"])
 
         return resulting_observ
@@ -88,7 +92,7 @@ class Environment:
         # TODO add checks for from and to nodes
 
         node1, node2, distance = self.agents_location[agent]
-        people_collected = 0
+        # people_collected = 0
 
         # If the agent is in node ( not on the edge ) check if the distination node is its neighbor
         if node1 == node2 and self.graph.is_neighbours(node1, dist_node) and not (node2,dist_node) in self.blocked_edges :
@@ -117,13 +121,13 @@ class Environment:
         # If the agent arrived to some node , collect all the people there and change the location from [node1,node2,X]
         # to [dist_node,dist_node,0]
         if distance == 0 and action_succeed:
-            people_collected = self.people_location.get(dist_node, 0)
-            self.people_location[dist_node] = 0
+            # people_collected = self.people_location.get(dist_node, 0)
+            # self.people_location[dist_node] = 0
 
             self.agents_location[agent] = [dist_node, dist_node, 0]
             action_succeed = True
 
-        self.people_collected[agent] += people_collected
+        # self.people_collected[agent] += people_collected
         self.agents_last_action[agent] = action_succeed
 
         new_observation = self.get_observation({})
@@ -154,6 +158,14 @@ class Environment:
 
         agent = action_details["agent_id"]
         self.agents_last_action[agent] = True
+        new_observation = self.get_observation({})
+        return new_observation
+    
+    def terminate_action(self, action_details: Dict):
+        """Terminate action"""
+
+        agent = action_details["agent_id"]
+        self.agents_last_action[agent] = False
         new_observation = self.get_observation({})
         return new_observation
 

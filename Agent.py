@@ -49,7 +49,7 @@ class HumanAgent(Agent):
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
         print()
-        print("**********************  Human agent  ***************************")
+        
 
         # Check whether my previous action succeed , if not - terminate
         is_previous_succeed = observation["agents_last_action"][self.id]
@@ -66,22 +66,25 @@ class HumanAgent(Agent):
         node2 = current_location[1]
         # Remaining distance
         distance = current_location[2]
-        print("Agent {id} is now on the way from {node1} to {node2} , remaining distance {dist}"
-              .format(id=self.get_id(), node1=node1, node2=node2, dist=distance))
+        if distance:
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+        # print("Agent {id} is now on the way from {node1} to {node2} , remaining distance {dist}"
+        #       .format(id=self.get_id(), node1=node1, node2=node2, dist=distance))
 
         # Print the possible nodes to traverse from node2
         # TODO : check if the neighbors are blocked
         graph = observation["graph"]
         neigbours_and_weights = graph.get_neigbours_and_weights(node2)
         neigbours, _ = zip(*neigbours_and_weights)
-        print("Node {node2} neighbours are : {neigh}".format(node2=node2, neigh=neigbours))
+        print("**********************  Human agent  ***************************")
+        print("Agent {id} is at Node {node2}, possible neighbours are : {neigh}".format(id=self.get_id(),node2=node2, neigh=neigbours))
 
         # Ask for destination
-        print("Please enter the distination node:")
+        print("Please enter the distination node or 0 for termination:")
 
         distanation = int(input())
 
-        return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": distanation}}
+        return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": distanation}} if distanation else {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
 
 class SaboteurAgent(Agent):
@@ -186,7 +189,7 @@ class GreedyAgent(Agent):
     def next_action(self, observation: Dict):
 
         print()
-        print("**********************  Greedy agent  ***************************")
+        # print("**********************  Greedy agent  ***************************")
         is_previous_succeed = observation["agents_last_action"][self.id]
 
         # If the previous action failed - terminate and don't do anything ( no-op )
@@ -229,7 +232,7 @@ class GreedyAgent(Agent):
         node2 = current_location[1]
 
         # Find nodes where there is more than one men
-        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
+        people_locations = [node for node, people in observation["people_location"].items() if people > 0 and node2 != node]
 
         temp_distance = float("inf")
         self.current_destination = None
@@ -249,21 +252,21 @@ class GreedyAgent(Agent):
         graph = observation["graph"]
         # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
-            print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
-                  .format(node1=node1, node2=node2, dist=distance))
+            # print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
+                #   .format(node1=node1, node2=node2, dist=distance))
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
         # If the agent arrived to the destination , return empty dict
         if node2 == self.current_destination or self.current_destination is None:
-            print("Arrived to destination node {node2}".format(node2=self.current_destination))
+            # print("Arrived to destination node {node2}".format(node2=self.current_destination))
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
-            print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-                  .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
+            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+                #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -273,16 +276,16 @@ class GreedyAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            print("Something is wrong . Computing the path to destination node {node}".format(
-                node=self.current_destination))
+            # print("Something is wrong . Computing the path to destination node {node}".format(
+                # node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
-            print("Begin to move .")
+            # print("Begin to move .")
 
             self.current_path = self.current_path[1:]
-            print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-                  .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
+            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+            #       .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             self.traversing_in_progress = True
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
 

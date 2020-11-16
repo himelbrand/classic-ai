@@ -21,30 +21,55 @@ class Simulator:
         # Environment source file : should be json file
         global global_file_name
 
+        print("Reading the environment input file...")
+
+        graph, people, Simulator.deadline = Env1.load_environment(global_file_name)
+        print("Done reading the environment input file...")
+        print("Need agents information....\n\n")
+
         # Agents creating
-        print("How many agents do you want to have ?")
-        agent_num = int(input())
+        while True:
+            try:
+                ans = input("How many agents do you want to have? ")
+                agent_num = int(ans)
+                break
+            except:
+                print('You must enter an integer...\ntry again...')
 
         agents_list = []  # type: List [Agent]
         agent_locations = {}
 
         for i in range(1, agent_num + 1):
             agent_types = list(Simulator.agent_init_functions.keys())
-            print("Agent N_{} : Please enter the agent type (one of the following {}) ?".format(i, agent_types))
-            agent_type = input()
+            options = [f'({t[0].upper()}) - {t}' for t in agent_types]
+            short = {t[0].upper(): t for t in agent_types}
+            while True:
+                print("Agent {} : Please enter the agent type:\n{}".format(i, '\n'.join(options)))
+                agent_type = input('Your choice: ')
+                if len(agent_type) == 1 and agent_type.upper() in short:
+                    agent_type = short[agent_type.upper()]
+                    break
+                if len(agent_type) > 1 and agent_type in agent_types:
+                    break
+                print(f'your choice of: "{agent_type}" is invalid, pick again from list (either first letter or complete name)')
 
-            print("Please enter agent location ( node number ) ")
-            agent_location = int(input())
+
+            while True:
+                try:
+                    ans = input("Please enter agent location (node number): ")
+                    agent_location = int(ans)
+                    if agent_location not in graph.graph:
+                        print(f'Your pick of {agent_location} is invalid must be on of { ", ".join([str(n) for n in graph.graph]) }')
+                    else:
+                        break
+                except:
+                    print('You must enter a valid node number of type int...')
 
             # Invoking agent initialization function ( according to agent type )
             agent = Simulator.agent_init_functions[agent_type]()
             agents_list.append(agent)
             agent_locations[agent.get_id()] = [agent_location, agent_location, 0]
-
-        print("Reading the environment input file...")
-
-        graph, people, Simulator.deadline = Env1.load_environment(global_file_name)
-
+            print('\n\n')
         print("Initializing environment")
 
         env = Env1.Environment(graph=graph, agents_location=agent_locations, people_location=people, blocked_edges=[])
@@ -63,22 +88,27 @@ class Simulator:
         # TODO Add function that checks whether the simulation is finished
         # TODO Add the func that print the world state
         # The main loop
+        self.print_env(observation,[],init=True)
         while not is_finished:
+            actions = [None]
             for agent in agent_list:
                 # Check whether current agent is not terminated
                 if agent.is_agent_terminated():
+                    actions.append(None)
                     continue
                 # Recieve action from the current agent
                 action = agent.next_action(observation)
-
-                self.time_passed += 1
+                actions.append(action)
+                
 
                 # Apply action and receive the last observation
                 observation = env.apply_action(action)
-
-                if self.is_simulation_finished(agent_list,observation):
-                    is_finished = True
-                    break
+            self.print_env(observation,actions)
+            self.time_passed += 1
+            if self.is_simulation_finished(agent_list,observation):
+                # is_finished = True
+                break
+            
 
     def print_statistics(self):
         ...
@@ -104,6 +134,37 @@ class Simulator:
             return True
 
         return False
+
+    def print_env(self,observation,actions,init=False):
+        print('\n\n\n')
+        if init:
+            print("================Initial Enviorment===============")
+        else:
+            print(f"\n=====Time-step is {self.time_passed}/{self.deadline}=====\n")
+        print("\n=====Graph information=====\n")
+        G = observation['graph']
+        P = observation['people_location']
+        A = observation['agents_location']
+        B = observation['blocked_edges']
+        PC = observation['people_collected']
+        for n in G.graph:
+            print(f'Node {n}:\n')
+            print(f'\tPeople count is {P[n] if n in P else 0}')
+            print(f'\tNeighbors-Distance: {", ".join([f"{n_tag}-{w}" for n_tag,w in G.get_neigbours_and_weights(n) if (n,n_tag) not in B])}')
+        print("\n=====Agents information=====\n")
+        for a in A:
+            term = not init and actions[a] is None
+            if term:
+                print(f'(Terminated) Agent {a} collected {PC[a]} people and is at Node {n1}')
+                continue
+            action = actions[a]['action_tag'].upper() if a < len(actions) else None
+            blocked = actions[a]['action_details']['to_block'] if action == 'BLOCK' else ''
+            n1,n2,d = A[a]
+            if n1 == n2:
+                print(f'(Active) Agent {a} collected {PC[a]} people and is at Node {n1}{f" - last action: {action} {blocked}" if action else ""}')
+            else:
+                print(f'(Active) Agent {a} collected {PC[a]} people and is crossing edge ({n1},{n2}) and completed {G.get_weight(n1,n2)-d}/{G.get_weight(n1,n2)} of traversal')
+        print('\n\n\n')
 
 
 if __name__ == '__main__':
