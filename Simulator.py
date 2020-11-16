@@ -30,7 +30,7 @@ class Simulator:
 
         for i in range(1, agent_num + 1):
             agent_types = list(Simulator.agent_init_functions.keys())
-            print("Agent N_{} : Please enter the agent type (one of the following {}) ?".format(i, agent_types))
+            print("Agent N_{} : Please enter the agent type (one of the following {}) ?".format(i, [agent_types))
             agent_type = input()
 
             print("Please enter agent location ( node number ) ")
@@ -63,22 +63,27 @@ class Simulator:
         # TODO Add function that checks whether the simulation is finished
         # TODO Add the func that print the world state
         # The main loop
+        self.print_env(observation,[],init=True)
         while not is_finished:
+            actions = [None]
             for agent in agent_list:
                 # Check whether current agent is not terminated
                 if agent.is_agent_terminated():
+                    actions.append(None)
                     continue
                 # Recieve action from the current agent
                 action = agent.next_action(observation)
-
-                self.time_passed += 1
+                actions.append(action)
+                
 
                 # Apply action and receive the last observation
                 observation = env.apply_action(action)
-
-                if self.is_simulation_finished(agent_list,observation):
-                    is_finished = True
-                    break
+            self.print_env(observation,actions)
+            self.time_passed += 1
+            if self.is_simulation_finished(agent_list,observation):
+                # is_finished = True
+                break
+            
 
     def print_statistics(self):
         ...
@@ -104,6 +109,37 @@ class Simulator:
             return True
 
         return False
+
+    def print_env(self,observation,actions,init=False):
+        print('\n\n\n')
+        if init:
+            print("================Initial Enviorment===============")
+        else:
+            print(f"\n=====Time-step is {self.time_passed}/{self.deadline}=====\n")
+        print("\n=====Graph information=====\n")
+        G = observation['graph']
+        P = observation['people_location']
+        A = observation['agents_location']
+        B = observation['blocked_edges']
+        PC = observation['people_collected']
+        for n in G.graph:
+            print(f'Node {n}:\n')
+            print(f'\tPeople count is {P[n] if n in P else 0}')
+            print(f'\tNeighbors-Distance: {", ".join([f"{n_tag}-{w}" for n_tag,w in G.get_neigbours_and_weights(n) if (n,n_tag) not in B])}')
+        print("\n=====Agents information=====\n")
+        for a in A:
+            term = not init and actions[a] is None
+            if term:
+                print(f'(Terminated) Agent {a} collected {PC[a]} people and is at Node {n1}')
+                continue
+            action = actions[a]['action_tag'].upper() if a < len(actions) else None
+            blocked = actions[a]['action_details']['to_block'] if action == 'BLOCK' else ''
+            n1,n2,d = A[a]
+            if n1 == n2:
+                print(f'(Active) Agent {a} collected {PC[a]} people and is at Node {n1}{f" - last action: {action} {blocked}" if action else ""}')
+            else:
+                print(f'(Active) Agent {a} collected {PC[a]} people and is crossing edge ({n1},{n2}) and completed {G.get_weight(n1,n2)-d}/{G.get_weight(n1,n2)} of traversal')
+        print('\n\n\n')
 
 
 if __name__ == '__main__':

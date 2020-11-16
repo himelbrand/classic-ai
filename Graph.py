@@ -39,6 +39,7 @@ class Graph:
         """Compute shortest path between two nodes ( Dijkstra ) without using the edges in the blocked list.
         Return value : The weight of the shortest path and the list of nodes - the path itself , or infinity and empty list
          if there is no such a path"""
+        
         if blocked is None:
             blocked = []
 
