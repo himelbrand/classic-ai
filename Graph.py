@@ -120,7 +120,7 @@ class Graph:
         return tree_edges,tree_weight
 
     def find_set(self,item,set_list):
-        for set in set_list:
-            if item in set:
-                return set
+        for set1 in set_list:
+            if item in set1:
+                return set1
         return None

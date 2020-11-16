@@ -4,6 +4,12 @@ import Graph as Gr
 """Parent type of all the agents"""
 
 
+class Link:
+    def __init__(self, prev, data):
+        self.prev = prev
+        self.data = data
+
+
 class Agent:
     next_id = 0
 
@@ -295,6 +301,7 @@ class PlanningAgent(Agent):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
+
         super().__init__("planning")
 
     def graph_reduction(self, observation):
@@ -318,9 +325,8 @@ class PlanningAgent(Agent):
                     new_graph[source_node].append(node)
                     new_edges[(min(node, source_node), max(node, source_node))] = weight
 
-
-                #TODO: There is a problem that not all pathes will be presented ( for example two equal weight pathes )
-                #TODO: The dijekstra should return all equally weighted pathes
+                # TODO: There is a problem that not all pathes will be presented ( for example two equal weight pathes )
+                # TODO: The dijekstra should return all equally weighted pathes
 
             source_node = people_locations[0]
             people_locations = people_locations[1:]
@@ -330,6 +336,79 @@ class PlanningAgent(Agent):
         return new_graph
 
     def next_action(self, observation: Dict):
-        new_graph = self.graph_reduction(observation)
+        path = self.make_plan_A_star(observation,self.MST_heuristic,10)
         """Main interface function of each agent - it receives the state  , and returns the action"""
         return {"action_tag": "no-op", "action_details": {}}
+
+    def make_plan_A_star(self, problem, heuristic, limit ):
+        open = [Link(None, self.initial_state(problem))]
+
+        counter = 0
+
+        while counter < limit:
+            if open == []:
+                return None
+            node = open.pop(0)
+
+            new_nodes = self.expand(heuristic, node)
+            open.extend(new_nodes)
+            open.sort(key=lambda link: link.data["f_value"])
+
+    def initial_state(self, problem):
+        new_graph = self.graph_reduction(problem)
+
+        return {"graph": new_graph,
+                "agents_location": problem["agents_location"][self.get_id()],
+                "people_location": problem["people_location"],
+
+                "g_value": 0,
+                "f_value": None}
+
+    def goal_test(self, node):
+        data = node.data
+
+        node_with_people = [n for n, p in data["people_location"] if p > 0]
+
+        return node_with_people != []
+
+    def expand(self, heuristic, parent_node):
+
+        data = parent_node.data
+
+        parent_graph = data["graph"]  # type: Gr.Graph
+        _, current_location, _ = data["agents_location"]
+        parent_g_value = data["g_value"]
+        neighb_and_weight = parent_graph.get_neigbours_and_weights(current_location)
+
+        child_nodes_list = []
+
+        for neib, weight in neighb_and_weight:
+            new_people_location = data["people_location"].copy()
+            new_people_location[neib] = 0
+
+            new_agent_location = {}
+            new_agent_location[self.get_id()] = [current_location, current_location, 0]
+
+            new_graph = self.graph_reduction({"graph": parent_graph,
+                                              "people_location": new_people_location,
+                                              "agents_location": data["agents_location"],
+                                              "blocked_edges": []})
+            new_state = {"graph": new_graph,
+                         "agents_location": new_agent_location[self.get_id()],
+                         "people_location": new_people_location,
+
+                         "g_value": parent_g_value + weight,
+                         "f_value": None}
+            h_value = heuristic(new_state)
+
+            new_state["f_value"] = new_state["g_value"] + h_value
+
+            child_nodes_list.append(Link(parent_node, new_state))
+
+        return child_nodes_list
+
+    def MST_heuristic(self,state):
+        graph = state["graph"]    #type: Gr.Graph
+        _,weight = graph.min_spanning_tree_kruskal([])
+
+        return  weight
