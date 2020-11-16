@@ -25,8 +25,8 @@ def load_environment(file_name):
         graph[node2].append(node1)
         weights[(min(node1, node2), max(node1, node2))] = weight
 
-    print(graph)
-    print(weights)
+    # print(graph)
+    # print(weights)
 
     graph = Gr.Graph(graph, weights)
 

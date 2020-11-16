@@ -21,30 +21,55 @@ class Simulator:
         # Environment source file : should be json file
         global global_file_name
 
+        print("Reading the environment input file...")
+
+        graph, people, Simulator.deadline = Env1.load_environment(global_file_name)
+        print("Done reading the environment input file...")
+        print("Need agents information....\n\n")
+
         # Agents creating
-        print("How many agents do you want to have ?")
-        agent_num = int(input())
+        while True:
+            try:
+                ans = input("How many agents do you want to have? ")
+                agent_num = int(ans)
+                break
+            except:
+                print('You must enter an integer...\ntry again...')
 
         agents_list = []  # type: List [Agent]
         agent_locations = {}
 
         for i in range(1, agent_num + 1):
             agent_types = list(Simulator.agent_init_functions.keys())
-            print("Agent N_{} : Please enter the agent type (one of the following {}) ?".format(i, [agent_types))
-            agent_type = input()
+            options = [f'({t[0].upper()}) - {t}' for t in agent_types]
+            short = {t[0].upper(): t for t in agent_types}
+            while True:
+                print("Agent {} : Please enter the agent type:\n{}".format(i, '\n'.join(options)))
+                agent_type = input('Your choice: ')
+                if len(agent_type) == 1 and agent_type.upper() in short:
+                    agent_type = short[agent_type.upper()]
+                    break
+                if len(agent_type) > 1 and agent_type in agent_types:
+                    break
+                print(f'your choice of: "{agent_type}" is invalid, pick again from list (either first letter or complete name)')
 
-            print("Please enter agent location ( node number ) ")
-            agent_location = int(input())
+
+            while True:
+                try:
+                    ans = input("Please enter agent location (node number): ")
+                    agent_location = int(ans)
+                    if agent_location not in graph.graph:
+                        print(f'Your pick of {agent_location} is invalid must be on of { ", ".join([str(n) for n in graph.graph]) }')
+                    else:
+                        break
+                except:
+                    print('You must enter a valid node number of type int...')
 
             # Invoking agent initialization function ( according to agent type )
             agent = Simulator.agent_init_functions[agent_type]()
             agents_list.append(agent)
             agent_locations[agent.get_id()] = [agent_location, agent_location, 0]
-
-        print("Reading the environment input file...")
-
-        graph, people, Simulator.deadline = Env1.load_environment(global_file_name)
-
+            print('\n\n')
         print("Initializing environment")
 
         env = Env1.Environment(graph=graph, agents_location=agent_locations, people_location=people, blocked_edges=[])
