@@ -20,9 +20,9 @@ class Agent:
 
         return Agent.next_id
 
-    def __init__(self, type: str):
+    def __init__(self, agent_type: str):
         self.id = Agent.__get_unique_id()
-        self.type = type
+        self.type = agent_type
         self.is_terminated = False
 
     def get_id(self):
