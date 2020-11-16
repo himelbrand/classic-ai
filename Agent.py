@@ -336,29 +336,30 @@ class PlanningAgent(Agent):
         return new_graph
 
     def next_action(self, observation: Dict):
-        path = self.make_plan_A_star(observation,self.MST_heuristic,10)
         """Main interface function of each agent - it receives the state  , and returns the action"""
-        return {"action_tag": "no-op", "action_details": {}}
+        path = self.make_plan_A_star(observation,self.MST_heuristic,10)
+        print(path)
+        return {"action_tag": "no-op", "action_details": {'agent_id':self.get_id()}}
 
     def make_plan_A_star(self, problem, heuristic, limit ):
-        open = [Link(None, self.initial_state(problem))]
+        fringe = [Link(None, self.initial_state(problem))]
 
         counter = 0
 
         while counter < limit:
-            if open == []:
+            if len(fringe) == 0:
                 return None
-            node = open.pop(0)
+            node = fringe.pop(0)
 
             new_nodes = self.expand(heuristic, node)
-            open.extend(new_nodes)
-            open.sort(key=lambda link: link.data["f_value"])
+            fringe.extend(new_nodes)
+            fringe.sort(key=lambda link: link.data["f_value"])
 
     def initial_state(self, problem):
         new_graph = self.graph_reduction(problem)
 
         return {"graph": new_graph,
-                "agents_location": problem["agents_location"][self.get_id()],
+                "agents_location": problem["agents_location"],
                 "people_location": problem["people_location"],
 
                 "g_value": 0,
@@ -376,7 +377,7 @@ class PlanningAgent(Agent):
         data = parent_node.data
 
         parent_graph = data["graph"]  # type: Gr.Graph
-        _, current_location, _ = data["agents_location"]
+        _, current_location, _ = data["agents_location"][self.get_id()]
         parent_g_value = data["g_value"]
         neighb_and_weight = parent_graph.get_neigbours_and_weights(current_location)
 
@@ -394,7 +395,7 @@ class PlanningAgent(Agent):
                                               "agents_location": data["agents_location"],
                                               "blocked_edges": []})
             new_state = {"graph": new_graph,
-                         "agents_location": new_agent_location[self.get_id()],
+                         "agents_location": new_agent_location,
                          "people_location": new_people_location,
 
                          "g_value": parent_g_value + weight,
