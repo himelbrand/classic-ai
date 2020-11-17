@@ -49,7 +49,6 @@ class HumanAgent(Agent):
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
         print()
-        
 
         # Check whether my previous action succeed , if not - terminate
         is_previous_succeed = observation["agents_last_action"][self.id]
@@ -77,14 +76,17 @@ class HumanAgent(Agent):
         neigbours_and_weights = graph.get_neigbours_and_weights(node2)
         neigbours, _ = zip(*neigbours_and_weights)
         print("**********************  Human agent  ***************************")
-        print("Agent {id} is at Node {node2}, possible neighbours are : {neigh}".format(id=self.get_id(),node2=node2, neigh=neigbours))
+        print("Agent {id} is at Node {node2}, possible neighbours are : {neigh}".format(id=self.get_id(), node2=node2,
+                                                                                        neigh=neigbours))
 
         # Ask for destination
         print("Please enter the distination node or 0 for termination:")
 
         distanation = int(input())
 
-        return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": distanation}} if distanation else {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        return {"action_tag": "traverse",
+                "action_details": {"agent_id": self.id, "to": distanation}} if distanation else {
+            "action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
 
 class SaboteurAgent(Agent):
@@ -232,7 +234,8 @@ class GreedyAgent(Agent):
         node2 = current_location[1]
 
         # Find nodes where there is more than one men
-        people_locations = [node for node, people in observation["people_location"].items() if people > 0 and node2 != node]
+        people_locations = [node for node, people in observation["people_location"].items() if
+                            people > 0 and node2 != node]
 
         temp_distance = float("inf")
         self.current_destination = None
@@ -253,7 +256,7 @@ class GreedyAgent(Agent):
         # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
             # print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
-                #   .format(node1=node1, node2=node2, dist=distance))
+            #   .format(node1=node1, node2=node2, dist=distance))
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
         # If the agent arrived to the destination , return empty dict
@@ -266,7 +269,7 @@ class GreedyAgent(Agent):
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
             # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-                #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
+            #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -277,7 +280,7 @@ class GreedyAgent(Agent):
         # And begin moving
         else:
             # print("Something is wrong . Computing the path to destination node {node}".format(
-                # node=self.current_destination))
+            # node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
@@ -310,6 +313,7 @@ class PlanningAgent(Agent):
         current_location = observation["agents_location"][self.get_id()]
         source_node = current_location[1]
 
+        observation["people_location"][source_node] = 0
         # Find nodes where there is more than one men
         people_locations = [node for node, people in observation["people_location"].items() if people > 0]
         people_locations_copy = people_locations.copy()
@@ -337,23 +341,35 @@ class PlanningAgent(Agent):
 
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
-        path = self.make_plan_A_star(observation,self.MST_heuristic,10)
+        path = self.make_plan_A_star(observation, self.MST_heuristic, 10)
         print(path)
-        return {"action_tag": "no-op", "action_details": {'agent_id':self.get_id()}}
+        return {"action_tag": "no-op", "action_details": {'agent_id': self.get_id()}}
 
-    def make_plan_A_star(self, problem, heuristic, limit ):
+    def make_plan_A_star(self, problem, heuristic, limit):
         fringe = [Link(None, self.initial_state(problem))]
 
         counter = 0
-
+        node = None
         while counter < limit:
             if len(fringe) == 0:
                 return None
             node = fringe.pop(0)
 
+            if self.goal_test(node):
+                break
             new_nodes = self.expand(heuristic, node)
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
+
+        path = []
+
+
+        while node != None:
+            _,vertex,_ = node.data["agents_location"][self.get_id()]
+            path.append(vertex)
+            node = node.prev
+        path.reverse()
+        return path
 
     def initial_state(self, problem):
         new_graph = self.graph_reduction(problem)
@@ -368,9 +384,9 @@ class PlanningAgent(Agent):
     def goal_test(self, node):
         data = node.data
 
-        node_with_people = [n for n, p in data["people_location"] if p > 0]
+        node_with_people = [n for n, p in data["people_location"].items() if p > 0]
 
-        return node_with_people != []
+        return node_with_people == []
 
     def expand(self, heuristic, parent_node):
 
@@ -388,11 +404,11 @@ class PlanningAgent(Agent):
             new_people_location[neib] = 0
 
             new_agent_location = {}
-            new_agent_location[self.get_id()] = [current_location, current_location, 0]
+            new_agent_location[self.get_id()] = [neib,neib, 0]
 
             new_graph = self.graph_reduction({"graph": parent_graph,
                                               "people_location": new_people_location,
-                                              "agents_location": data["agents_location"],
+                                              "agents_location": new_agent_location,
                                               "blocked_edges": []})
             new_state = {"graph": new_graph,
                          "agents_location": new_agent_location,
@@ -408,8 +424,8 @@ class PlanningAgent(Agent):
 
         return child_nodes_list
 
-    def MST_heuristic(self,state):
-        graph = state["graph"]    #type: Gr.Graph
-        _,weight = graph.min_spanning_tree_kruskal([])
+    def MST_heuristic(self, state):
+        graph = state["graph"]  # type: Gr.Graph
+        _, weight = graph.min_spanning_tree_kruskal([])
 
-        return  weight
+        return weight
