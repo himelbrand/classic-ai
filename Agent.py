@@ -67,8 +67,6 @@ class HumanAgent(Agent):
         distance = current_location[2]
         if distance:
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
-        # print("Agent {id} is now on the way from {node1} to {node2} , remaining distance {dist}"
-        #       .format(id=self.get_id(), node1=node1, node2=node2, dist=distance))
 
         # Print the possible nodes to traverse from node2
         # TODO : check if the neighbors are blocked
@@ -255,21 +253,16 @@ class GreedyAgent(Agent):
         graph = observation["graph"]
         # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
-            # print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
-            #   .format(node1=node1, node2=node2, dist=distance))
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
         # If the agent arrived to the destination , return empty dict
         if node2 == self.current_destination or self.current_destination is None:
-            # print("Arrived to destination node {node2}".format(node2=self.current_destination))
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
-            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-            #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -279,16 +272,11 @@ class GreedyAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            # print("Something is wrong . Computing the path to destination node {node}".format(
-            # node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
-            # print("Begin to move .")
 
             self.current_path = self.current_path[1:]
-            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-            #       .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             self.traversing_in_progress = True
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
 
@@ -389,21 +377,16 @@ class PlanningAgent(Agent):
         graph = observation["graph"]
         # If the agent is on the edge keep moving towards the destination ( node2)
         if node1 != node2:
-            # print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
-            #   .format(node1=node1, node2=node2, dist=distance))
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
 
         # If the agent arrived to the destination , return empty dict
         if node2 == self.current_destination or self.current_destination is None:
-            # print("Arrived to destination node {node2}".format(node2=self.current_destination))
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
         if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
-            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-            #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -413,16 +396,11 @@ class PlanningAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            # print("Something is wrong . Computing the path to destination node {node}".format(
-            # node=self.current_destination))
             self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
-            # print("Begin to move .")
 
             self.current_path = self.current_path[1:]
-            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
-            #       .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
             self.traversing_in_progress = True
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
 
@@ -555,9 +533,6 @@ class PlanningAgent(Agent):
         edges_sum = 0
         for e in G.weights:
             n1, n2 = e
-            if n1 == 3 and n2 == 7:
-                print('*' * 50)
-                print(G.weights[e])
             p1, p2 = state["people_location"][n1], state["people_location"][n2]
             G.weights[e] += ppl_sum - p1 - p2
             edges_sum += G.weights[e]

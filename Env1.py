@@ -25,9 +25,6 @@ def load_environment(file_name):
         graph[node2].append(node1)
         weights[(min(node1, node2), max(node1, node2))] = weight
 
-    # print(graph)
-    # print(weights)
-
     graph = Gr.Graph(graph, weights)
 
     return graph, people_location, deadline
@@ -58,9 +55,7 @@ class Environment:
         for agent in self.agents_location.keys():
             node1, node2, dist = self.agents_location[agent]
 
-            # if node1 == node2:
             self.people_collected[agent] = 0
-            #     self.people_location[node1] = 0
 
             # Initialize agents_last_action dictionary
             self.agents_last_action[agent] = True
@@ -70,9 +65,7 @@ class Environment:
         It receives an action ( dictionary ) of the following format {\"action_tag\" : ..., \"action_details\" : ....} and
         invokes the function from action_reaction dict according to action_tag
         The function returns current environment state"""
-        print()
-        # print("*************** Environment*******************")
-        # print("Environment recieved an action {}".format(action))
+
         agent = action['action_details']['agent_id']
         current_node = self.agents_location[agent][0]
         people_collected = self.people_location.get(current_node, 0)
@@ -121,13 +114,9 @@ class Environment:
         # If the agent arrived to some node , collect all the people there and change the location from [node1,node2,X]
         # to [dist_node,dist_node,0]
         if distance == 0 and action_succeed:
-            # people_collected = self.people_location.get(dist_node, 0)
-            # self.people_location[dist_node] = 0
-
             self.agents_location[agent] = [dist_node, dist_node, 0]
             action_succeed = True
 
-        # self.people_collected[agent] += people_collected
         self.agents_last_action[agent] = action_succeed
 
         new_observation = self.get_observation({})
