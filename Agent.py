@@ -359,7 +359,7 @@ class PlanningAgent(Agent):
         self.current_path = []
 
         if len(self.destination_bank) == 0:
-            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic_ppl,self.limit)
+            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic,self.limit)
 
             self.destination_bank.pop(0)
 
