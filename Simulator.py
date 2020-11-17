@@ -2,7 +2,7 @@ import Env1
 import Agent
 from typing import List
 
-global_file_name = "graph2.json"
+global_file_name = "graph4.json"
 
 
 class Simulator:
