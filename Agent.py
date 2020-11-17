@@ -300,12 +300,119 @@ class PlanningAgent(Agent):
         """Agent factory function"""
         return PlanningAgent()
 
-    def __init__(self):
+    def __init__(self,limit=10000):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
-
+        self.destination_bank = []
+        self.limit = limit
         super().__init__("planning")
+
+    def next_action(self, observation: Dict):
+
+        print()
+        # print("**********************  Greedy agent  ***************************")
+        is_previous_succeed = observation["agents_last_action"][self.id]
+
+        # If the previous action failed - terminate and don't do anything ( no-op )
+        if not is_previous_succeed or self.is_terminated:
+            self.is_terminated = True
+            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+
+
+        # If the agent is on the way somewhere , find next action to send ( according to the path )
+        # Or if the agent arrived to the destination return {}
+        if self.traversing_in_progress:
+            # Return the next traverse command
+            next_action = self.next_traverse_action(observation)
+
+            if next_action is None:
+                self.is_terminated = True
+                return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+
+            if next_action != {}:
+                return next_action
+
+        # Compute the next destination node ( the nearest node with people )
+        self.compute_destination(observation)
+
+        # If can't compute the next destination , terminate
+        if self.current_destination is None:
+            self.is_terminated = True
+            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+
+        # Return the next traverse command ( given currently computed destination )
+        next_action = self.next_traverse_action(observation)
+
+        return next_action
+
+    def compute_destination(self, observation):
+        """Find the closest node with people and update destination and path"""
+
+        blocked_edges = observation["blocked_edges"]
+        graph = observation["graph"]
+        current_location = observation["agents_location"][self.get_id()]
+        node2 = current_location[1]
+
+        self.current_destination = None
+        self.current_path = []
+
+        if len(self.destination_bank) == 0:
+            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic,self.limit)
+
+            self.destination_bank.pop(0)
+
+        if len(self.destination_bank) == 0:
+            self.current_destination = None
+            return
+
+        self.current_destination = self.destination_bank.pop(0)
+
+        _,self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+
+    def next_traverse_action(self, observation):
+        node1, node2, distance = observation["agents_location"][self.get_id()]
+        blocked_edges = observation["blocked_edges"]
+
+        graph = observation["graph"]
+        # If the agent is on the edge keep moving towards the destination ( node2)
+        if node1 != node2:
+            # print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
+            #   .format(node1=node1, node2=node2, dist=distance))
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+
+        # If the agent arrived to the destination , return empty dict
+        if node2 == self.current_destination or self.current_destination is None:
+            # print("Arrived to destination node {node2}".format(node2=self.current_destination))
+            self.current_path = []
+            self.traversing_in_progress = False
+            return {}
+
+        # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
+        if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
+            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+            #   .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
+            # TODO if the edge on the path is blocked recompute the path
+            self.traversing_in_progress = True
+            self.current_path = self.current_path[1:]
+
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
+
+        # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
+        # And begin moving
+        else:
+            # print("Something is wrong . Computing the path to destination node {node}".format(
+            # node=self.current_destination))
+            self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+            if self.current_path == []:
+                return None
+            # print("Begin to move .")
+
+            self.current_path = self.current_path[1:]
+            # print("I'm on the way to {node2} , remaining path is {path},currently passed {node1} keep going ...."
+            #       .format(node1=self.current_path[0], path=self.current_path, node2=self.current_destination))
+            self.traversing_in_progress = True
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
 
     def graph_reduction(self, observation):
         blocked_edges = observation["blocked_edges"]
@@ -338,12 +445,6 @@ class PlanningAgent(Agent):
         new_graph = Gr.Graph(new_graph, new_edges)
         sp_tree = new_graph.min_spanning_tree_kruskal([])
         return new_graph
-
-    def next_action(self, observation: Dict):
-        """Main interface function of each agent - it receives the state  , and returns the action"""
-        path = self.make_plan_A_star(observation, self.MST_heuristic, 10)
-        print(path)
-        return {"action_tag": "no-op", "action_details": {'agent_id': self.get_id()}}
 
     def make_plan_A_star(self, problem, heuristic, limit):
         fringe = [Link(None, self.initial_state(problem))]
@@ -416,7 +517,7 @@ class PlanningAgent(Agent):
 
                          "g_value": parent_g_value + weight,
                          "f_value": None}
-            h_value = heuristic(new_state)
+            h_value = heuristic(self,new_state)
 
             new_state["f_value"] = new_state["g_value"] + h_value
 
