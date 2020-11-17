@@ -300,7 +300,7 @@ class PlanningAgent(Agent):
         """Agent factory function"""
         return PlanningAgent()
 
-    def __init__(self,limit=10000):
+    def __init__(self,limit=2):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
@@ -461,6 +461,7 @@ class PlanningAgent(Agent):
             new_nodes = self.expand(heuristic, node)
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
+            counter += 1
 
         path = []
 
