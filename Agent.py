@@ -1,5 +1,6 @@
 from typing import Dict, List, Set, Tuple
 import Graph as Gr
+import distance_algs as algo
 
 """Parent type of all the agents"""
 
@@ -19,6 +20,11 @@ class Agent:
         Agent.next_id += 1
 
         return Agent.next_id
+    
+    @classmethod
+    def restart_ids(cls):
+        # Get unique id to each agent
+        Agent.next_id = 0
 
     def __init__(self, agent_type: str):
         self.id = Agent.__get_unique_id()
@@ -30,9 +36,11 @@ class Agent:
 
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
-        return {"action_tag": "no-op", "action_details": {}}
+        return {"action_tag": "no-op", "action_details": {'agent_id':self.id}}
 
-    def is_agent_terminated(self):
+    def is_agent_terminated(self,terminate=False):
+        if terminate:
+            self.is_terminated = True
         return self.is_terminated
 
 
@@ -52,31 +60,26 @@ class HumanAgent(Agent):
 
         # Check whether my previous action succeed , if not - terminate
         is_previous_succeed = observation["agents_last_action"][self.id]
-
         if not is_previous_succeed:
-            self.is_terminated = True
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
-        # Print the agent's current location ( if node1 == node2 and distance  = 0 , the agent is in node2 ( not on the edge ))
         current_location = observation["agents_location"][self.id]
-        # Source  node
-        node1 = current_location[0]
-        # Destination node
-        node2 = current_location[1]
-        # Remaining distance
-        distance = current_location[2]
-        if distance:
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+        
+        # Destination node and remaining distance
+        _,dest,rd = current_location
+       
+        if rd:
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
 
-        # Print the possible nodes to traverse from node2
+        # Print the possible nodes to traverse from dest
         # TODO : check if the neighbors are blocked
         graph = observation["graph"]
-        neigbours_and_weights = graph.get_neigbours_and_weights(node2)
+        neigbours_and_weights = graph.get_neigbours_and_weights(dest)
         neigbours, _ = zip(*neigbours_and_weights)
-        print("**********************  Human agent  ***************************")
-        print("Agent {id} is at Node {node2}, possible neighbours are : {neigh}".format(id=self.get_id(), node2=node2,
-                                                                                        neigh=neigbours))
 
+
+        print("**********************  Human agent  ***************************")
+        print(f"Agent {self.id} is at Node {dest}, possible neighbours are : {neigbours}")
         # Ask for destination
         print("Please enter the distination node or 0 for termination:")
 
@@ -92,8 +95,12 @@ class SaboteurAgent(Agent):
     @classmethod
     def create_agent(cls):
         """Agent factory function"""
-        print("Please enter V (the number of no-ops until block) for this saboteur agent:")
-        V = int(input())
+        while True:
+            try:
+                V = int(input("Please enter V (the number of no-ops until block) for this saboteur agent: "))
+                break
+            except:
+                print('Invalid choice, must be an integer...')
         return SaboteurAgent(V)
 
     def __init__(self, V):
@@ -102,24 +109,22 @@ class SaboteurAgent(Agent):
         super().__init__("saboteur")
 
     def next_action(self, observation: Dict):
-        print()
-        print("**********************  Sabateur agent  ***************************")
-
         """Main interface function of each agent - it receives the state  , and returns the action"""
+
         is_previous_succeed = observation["agents_last_action"][self.id]
-        node1, node2, distance = observation["agents_location"][self.get_id()]
+        origin, dest, distance = observation["agents_location"][self.id]
 
         # If the previous action failed - terminate and don't do anything ( no-op )
         if not is_previous_succeed:
-            self.is_terminated = True
+            # self.is_terminated = True
             print("My previous action failed , terminating .....")
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
-        # If the agent is on the edge keep moving towards the destination (node2)
-        if node1 != node2:
-            print("I'm on the way from {node1} to {node2} (remaining distance {dist} ), keep going ...."
-                  .format(node1=node1, node2=node2, dist=distance))
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+        # If the agent is on the edge keep moving towards the destination (dest)
+        if origin != dest:
+            print("I'm on the way from {origin} to {dest} (remaining distance {dist} ), keep going ...."
+                  .format(origin=origin, dest=dest, dist=distance))
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
 
         # Reduce agent's internal counter
         self.remaining_time -= 1
@@ -135,12 +140,12 @@ class SaboteurAgent(Agent):
 
             neibhor = self.find_closest_neighbor(observation)
             if neibhor is None:
-                self.is_terminated = True
-                print("Failed. Terminating .")
-                return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+                # self.is_terminated = True
+                # print("Failed. Terminating .")
+                return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
-            print("Blocking the edge {edge}".format(edge=(node2, neibhor)))
-            return {"action_tag": "block", "action_details": {"agent_id": self.id, "to_block": (node2, neibhor)}}
+            print("Blocking the edge {edge}".format(edge=(dest, neibhor)))
+            return {"action_tag": "block", "action_details": {"agent_id": self.id, "to_block": (dest, neibhor)}}
 
         # If the counter is -1 - find the neighbor with lowest edge wight and begin moving towards it
         if self.remaining_time == -1:
@@ -148,9 +153,9 @@ class SaboteurAgent(Agent):
 
             neibhor = self.find_closest_neighbor(observation)
             if neibhor is None:
-                self.is_terminated = True
-                print("Failed. Terminating .")
-                return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+                # self.is_terminated = True
+                # print("Failed. Terminating .")
+                return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
             self.remaining_time = self.V + 1
 
             print("Moving to node {node}".format(node=neibhor))
@@ -158,17 +163,17 @@ class SaboteurAgent(Agent):
 
     def find_closest_neighbor(self, observation):
         """Find the neighbor with the lowest edge that is not blocked"""
-        _, node2, _ = observation["agents_location"][self.get_id()]
+        _, dest, _ = observation["agents_location"][self.id]
         blocked_edges = observation["blocked_edges"]
         graph = observation["graph"]
 
-        neighbors_and_weights = graph.get_neigbours_and_weights(node2)
+        neighbors_and_weights = graph.get_neigbours_and_weights(dest)
         # Revert (neighbor, weight ) tuples and sort them
         weights_and_neighbors = sorted([(weigh, neib) for neib, weigh in neighbors_and_weights])
 
         # Traverse the neighbors (from the nearest one ) and check if it is not in blocked list , return the first that succeed
         for _, neighbor in weights_and_neighbors:
-            if not (node2, neighbor) in blocked_edges:
+            if not (dest, neighbor) in blocked_edges:
                 return neighbor
         return None
 
@@ -194,8 +199,8 @@ class GreedyAgent(Agent):
 
         # If the previous action failed - terminate and don't do anything ( no-op )
         if not is_previous_succeed or self.is_terminated:
-            self.is_terminated = True
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            # self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
         # If the agent is on the way somewhere , find next action to send ( according to the path )
         # Or if the agent arrived to the destination return {}
@@ -204,8 +209,8 @@ class GreedyAgent(Agent):
             next_action = self.next_traverse_action(observation)
 
             if next_action is None:
-                self.is_terminated = True
-                return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+                # self.is_terminated = True
+                return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
             if next_action != {}:
                 return next_action
@@ -215,8 +220,8 @@ class GreedyAgent(Agent):
 
         # If can't compute the next destination , terminate
         if self.current_destination is None:
-            self.is_terminated = True
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            # self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
 
         # Return the next traverse command ( given currently computed destination )
         next_action = self.next_traverse_action(observation)
@@ -228,41 +233,41 @@ class GreedyAgent(Agent):
 
         blocked_edges = observation["blocked_edges"]
         graph = observation["graph"]
-        current_location = observation["agents_location"][self.get_id()]
-        node2 = current_location[1]
+        current_location = observation["agents_location"][self.id]
+        dest = current_location[1]
 
         # Find nodes where there is more than one men
         people_locations = [node for node, people in observation["people_location"].items() if
-                            people > 0 and node2 != node]
+                            people > 0 and dest != node]
 
         temp_distance = float("inf")
         self.current_destination = None
         self.current_path = []
 
         for node in people_locations:
-            distance, path = graph.get_shortest_path_Dijk(node2, node, blocked_edges)
+            distance, path = algo.get_shortest_path_Dijk(graph,dest, node, blocked_edges)
             if distance < temp_distance:
                 temp_distance = distance
                 self.current_path = path
                 self.current_destination = node
 
     def next_traverse_action(self, observation):
-        node1, node2, distance = observation["agents_location"][self.get_id()]
+        origin, dest, _ = observation["agents_location"][self.id]
         blocked_edges = observation["blocked_edges"]
 
         graph = observation["graph"]
-        # If the agent is on the edge keep moving towards the destination ( node2)
-        if node1 != node2:
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+        # If the agent is on the edge keep moving towards the destination ( dest)
+        if origin != dest:
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
 
         # If the agent arrived to the destination , return empty dict
-        if node2 == self.current_destination or self.current_destination is None:
+        if dest == self.current_destination or self.current_destination is None:
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
-        if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
+        if dest == self.current_path[0] and self.current_destination == self.current_path[-1]:
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
@@ -272,7 +277,7 @@ class GreedyAgent(Agent):
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+            self.current_path = algo.get_shortest_path_Dijk(graph,dest, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
 
@@ -281,41 +286,49 @@ class GreedyAgent(Agent):
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
 
 
-class PlanningAgent(Agent):
+class SearchAgent(Agent):
 
     @classmethod
     def create_agent(cls):
         """Agent factory function"""
-        print("Should the agent be greedy ( G ), full planner ( F ) or online planner ( O )")
-        answer = input()
-        if answer == "G" or answer == "g":
-            return PlanningAgent("greedy", limit=2)
-        elif answer == "O" or answer == "o":
-            print("Please enter the limit of expantions:")
-            limit = int(input())
-            return PlanningAgent("online", limit=limit)
-        return PlanningAgent("full")
+        options = {'G':('greedy',1),'A':('A*',10000),'S':('simple_RT_A*',None)}
+        while True:
+            answer = input('Possible search agent sub-class:\n(G) greedy\n(A) A*\n(S) simple RT A*\n\nPlease choose an option: ').upper()
+            if answer not in options:
+                print('Invalid choice, please choose one of: G, A, S')
+                continue
+            name,limit = options[answer]
+            if limit is None:
+                while True:
+                    try:
+                        limit = int(input('Please enter a limit parameter for this agent: '))
+                        break
+                    except:
+                        print('Invalid input, limit must be an integer...')
+            break
+        return SearchAgent(name,limit=limit)
+            
+            
 
-    def __init__(self, type, limit=10000):
+    def __init__(self, agent_type, limit=10000):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
         self.destination_bank = []  # The sequence of nodes to visit that were returned by planner
         self.limit = limit
         self.expansions = 0
+        self.last_expansions = 0
 
-        super().__init__("planning_{}".format(type))
+        super().__init__("search_{}".format(agent_type))
 
     def next_action(self, observation: Dict):
-
-        print()
-        # print("**********************  Search agent  ***************************")
+        self.last_expansions = 0
         is_previous_succeed = observation["agents_last_action"][self.id]
 
         # If the previous action failed - terminate and don't do anything ( no-op )
         if not is_previous_succeed or self.is_terminated:
-            self.is_terminated = True
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            # self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id,'expansions':self.last_expansions}}
 
         # If the agent is on the way somewhere , find next action to send ( according to the path )
         # Or if the agent arrived to the destination return {}
@@ -324,8 +337,8 @@ class PlanningAgent(Agent):
             next_action = self.next_traverse_action(observation)
 
             if next_action is None:
-                self.is_terminated = True
-                return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+                # self.is_terminated = True
+                return {"action_tag": "terminate", "action_details": {"agent_id": self.id,'expansions':self.last_expansions}}
 
             if next_action != {}:
                 return next_action
@@ -336,8 +349,8 @@ class PlanningAgent(Agent):
 
         # If can't compute the next destination , terminate
         if self.current_destination is None:
-            self.is_terminated = True
-            return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
+            # self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id,'expansions':self.last_expansions}}
 
         # Return the next traverse command ( given currently computed destination )
         next_action = self.next_traverse_action(observation)
@@ -349,65 +362,65 @@ class PlanningAgent(Agent):
 
         blocked_edges = observation["blocked_edges"]
         graph = observation["graph"]
-        current_location = observation["agents_location"][self.get_id()]
-        node2 = current_location[1]
+        current_location = observation["agents_location"][self.id]
+        dest = current_location[1]
 
         self.current_destination = None
         self.current_path = []
 
         if len(self.destination_bank) == 0:
-            self.destination_bank = self.make_plan_A_star(observation, PlanningAgent.MST_heuristic, self.limit)
-
+            self.destination_bank = self.make_plan_A_star(observation, SearchAgent.MST_heuristic_ppl, self.limit)
+            if self.destination_bank is None:
+                self.current_destination = None
+                return
             self.destination_bank.pop(0)
-            if self.type == "planning_online":
+            if 'RT' in self.type:
                 self.destination_bank = self.destination_bank[:1]
 
-        if len(self.destination_bank) == 0:
-            self.current_destination = None
-            return
+        
 
         self.current_destination = self.destination_bank.pop(0)
 
-        _, self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+        _, self.current_path = algo.get_shortest_path_Dijk(graph,dest, self.current_destination, blocked_edges)
 
     def next_traverse_action(self, observation):
-        node1, node2, distance = observation["agents_location"][self.get_id()]
+        origin, dest, _ = observation["agents_location"][self.id]
         blocked_edges = observation["blocked_edges"]
 
         graph = observation["graph"]
-        # If the agent is on the edge keep moving towards the destination ( node2)
-        if node1 != node2:
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": node2}}
+        # If the agent is on the edge keep moving towards the destination ( dest)
+        if origin != dest:
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest, 'expansions':self.last_expansions}}
 
         # If the agent arrived to the destination , return empty dict
-        if node2 == self.current_destination or self.current_destination is None:
+        if dest == self.current_destination or self.current_destination is None:
             self.current_path = []
             self.traversing_in_progress = False
             return {}
 
         # If the agent arrived to some node but it's not a destination - keep moving to the next node in the path
-        if node2 == self.current_path[0] and self.current_destination == self.current_path[-1]:
+        if dest == self.current_path[0] and self.current_destination == self.current_path[-1]:
             # TODO if the edge on the path is blocked recompute the path
             self.traversing_in_progress = True
             self.current_path = self.current_path[1:]
 
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0],'expansions':self.last_expansions}}
 
         # If the agent ( for some reason ) isn't on the path to the destination , recompute the path from the current location
         # And begin moving
         else:
-            self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+            self.current_path = algo.get_shortest_path_Dijk(graph,dest, self.current_destination, blocked_edges)
             if self.current_path == []:
                 return None
 
             self.current_path = self.current_path[1:]
             self.traversing_in_progress = True
-            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0]}}
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": self.current_path[0],'expansions':self.last_expansions}}
 
     def graph_reduction(self, observation):
         blocked_edges = observation["blocked_edges"]
         graph = observation["graph"]
-        current_location = observation["agents_location"][self.get_id()]
+        current_location = observation["agents_location"][self.id]
         source_node = current_location[1]
 
         # Find nodes where there is more than one men
@@ -421,7 +434,7 @@ class PlanningAgent(Agent):
         new_graph[source_node] = []
         while people_locations != []:
             for node in people_locations:
-                weight, path = graph.get_shortest_path_Dijk(source_node, node, blocked=blocked_edges)
+                weight, path = algo.get_shortest_path_Dijk(graph,source_node, node, blocked=blocked_edges)
                 if weight < float("inf") and len(set(path[1:-1]).intersection(people_locations_copy)) == 0:
                     new_graph[node].append(source_node)
                     new_graph[source_node].append(node)
@@ -444,21 +457,21 @@ class PlanningAgent(Agent):
         node = fringe.pop(0)
         while counter < limit and not self.goal_test(node):
             new_nodes = self.expand(heuristic, node)
-
-            self.expansions += 1
-
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
             counter += 1
             if len(fringe) == 0:
+                self.expansions += counter
+                self.last_expansions = counter
                 return None
             node = fringe.pop(0)
            
 
         path = []
-
+        self.expansions += counter
+        self.last_expansions = counter
         while node != None:
-            _, vertex, _ = node.data["agents_location"][self.get_id()]
+            _, vertex, _ = node.data["agents_location"][self.id]
             path.append(vertex)
             node = node.prev
         path.reverse()
@@ -485,7 +498,7 @@ class PlanningAgent(Agent):
         data = parent_node.data
 
         parent_graph = data["graph"]  # type: Gr.Graph
-        _, current_location, _ = data["agents_location"][self.get_id()]
+        _, current_location, _ = data["agents_location"][self.id]
         parent_g_value = data["g_value"]
         neighb_and_weight = parent_graph.get_neigbours_and_weights(current_location)
 
@@ -496,7 +509,7 @@ class PlanningAgent(Agent):
             new_people_location[neib] = 0
 
             new_agent_location = {}
-            new_agent_location[self.get_id()] = [neib, neib, 0]
+            new_agent_location[self.id] = [neib, neib, 0]
 
             new_graph = self.graph_reduction({"graph": parent_graph,
                                               "people_location": new_people_location,
@@ -510,7 +523,7 @@ class PlanningAgent(Agent):
                          "f_value": None}
             h_value = heuristic(self, new_state)
 
-            if self.type == "planning_greedy":
+            if 'greedy' in self.type:
                 new_state["f_value"] = h_value
             else:
                 new_state["f_value"] = new_state["g_value"] + h_value
@@ -521,7 +534,7 @@ class PlanningAgent(Agent):
 
     def MST_heuristic(self, state):
         graph = state["graph"]  # type: Gr.Graph
-        _, weight = graph.min_spanning_tree_kruskal([])
+        _, weight = algo.min_spanning_tree_kruskal(graph,[])
 
         return weight
 
@@ -538,6 +551,6 @@ class PlanningAgent(Agent):
         for e in G.weights:
             G.weights[e] /= edges_sum
 
-        _, weight = G.min_spanning_tree_kruskal([])
+        _, weight = algo.min_spanning_tree_kruskal(G,[])
 
         return weight

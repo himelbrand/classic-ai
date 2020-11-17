@@ -14,7 +14,6 @@ def load_environment(file_name):
     people_location = {node_people[0]: node_people[1] for node_people in json_dict["node_people"]}
 
     # TODO Check consistancy
-    # TODO Check whether there are people on init node
 
     edges_weights = json_dict["n1_n2_weight"]
     graph = {node: [] for node in nodes}
@@ -39,7 +38,7 @@ class Environment:
         # key - agent ID , value is triple ( node1,node2,distance)
         # if node1 == node2 and distance = 0 , the agent is in node2 ,
         # else the agent is on the edge (node1,node2) at distance X from node2
-
+        self.agents_expansions = {a:0 for a in agents_location}
         self.people_location = people_location  # type: Dict[int,int]                 # People location : key - node , value - number of people
         self.blocked_edges = blocked_edges  # type: List[(int,int)]               # Edges that were blocked
 
@@ -50,14 +49,8 @@ class Environment:
         self.actions_reactions = {"traverse": self.traverse, "no-op": self.no_op_action, "block": self.block, "terminate":self.terminate_action}
 
     def initialize(self):
-
-        # Traverse through the agents and check if there are people in their initial nodes , if yes - collect
         for agent in self.agents_location.keys():
-            node1, node2, dist = self.agents_location[agent]
-
             self.people_collected[agent] = 0
-
-            # Initialize agents_last_action dictionary
             self.agents_last_action[agent] = True
 
     def apply_action(self, action):
@@ -71,8 +64,10 @@ class Environment:
         people_collected = self.people_location.get(current_node, 0)
         self.people_location[current_node] = 0
         self.people_collected[agent] += people_collected
+        if 'expansions' in action["action_details"]:
+            self.agents_expansions[action["action_details"]['agent_id']] += action["action_details"]['expansions']
         resulting_observ = self.actions_reactions[action["action_tag"]](action["action_details"])
-
+        resulting_observ['collected'] = people_collected
         return resulting_observ
 
     def traverse(self, action_details: Dict):
@@ -80,7 +75,7 @@ class Environment:
         agent = action_details["agent_id"]
 
         # distanation node
-        dist_node = action_details["to"]
+        dest_node = action_details["to"]
 
         # TODO add checks for from and to nodes
 
@@ -88,18 +83,18 @@ class Environment:
         # people_collected = 0
 
         # If the agent is in node ( not on the edge ) check if the distination node is its neighbor
-        if node1 == node2 and self.graph.is_neighbours(node1, dist_node) and not (node2,dist_node) in self.blocked_edges :
-            # Get (node1,dist_node) edge weight
+        if node1 == node2 and self.graph.is_neighbours(node1, dest_node) and not (node2,dest_node) in self.blocked_edges :
+            # Get (node1,dest_node) edge weight
 
-            edge_weight = self.graph.get_weight(node1, dist_node)
+            edge_weight = self.graph.get_weight(node1, dest_node)
 
-            # Move the agent into the edge (node1,dist_node)
+            # Move the agent into the edge (node1,dest_node)
             distance = edge_weight - 1
-            self.agents_location[agent] = [node1, dist_node, distance]
+            self.agents_location[agent] = [node1, dest_node, distance]
             action_succeed = True
 
         # If the agent is already inside the edge , check whether destination node is correct
-        elif node1 != node2 and node2 == dist_node:
+        elif node1 != node2 and node2 == dest_node:
 
             # Move the agent one step on the edge
             distance -= 1
@@ -112,9 +107,9 @@ class Environment:
             # TODO write warning
 
         # If the agent arrived to some node , collect all the people there and change the location from [node1,node2,X]
-        # to [dist_node,dist_node,0]
+        # to [dest_node,dest_node,0]
         if distance == 0 and action_succeed:
-            self.agents_location[agent] = [dist_node, dist_node, 0]
+            self.agents_location[agent] = [dest_node, dest_node, 0]
             action_succeed = True
 
         self.agents_last_action[agent] = action_succeed
@@ -126,7 +121,7 @@ class Environment:
     def block(self, action_details):
         """The function for block action """
         agent = action_details["agent_id"]
-        node1, node2, distance = self.agents_location[agent]
+        node1, node2, _ = self.agents_location[agent]
 
         node_block1, node_block2 = action_details["to_block"]
 
@@ -165,13 +160,9 @@ class Environment:
                            "people_location": self.people_location,
                            "blocked_edges": self.blocked_edges,
                            "people_collected": self.people_collected,
-                           "agents_last_action": self.agents_last_action}
+                           "agents_last_action": self.agents_last_action,
+                           'expansions': self.agents_expansions}
 
         new_observation.update(args)
         return new_observation
 
-
-if __name__ == '__main__':
-    g, _, _ = load_environment("graph2.json")
-    res = g.min_spanning_tree_kruskal([])
-    print(res)
