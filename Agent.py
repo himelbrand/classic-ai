@@ -442,10 +442,7 @@ class PlanningAgent(Agent):
 
         counter = 0
         node = fringe.pop(0)
-        while counter < limit or not self.goal_test(node):
-            if len(fringe) == 0:
-                return None
-
+        while counter < limit and not self.goal_test(node):
             new_nodes = self.expand(heuristic, node)
 
             self.expansions += 1
@@ -453,7 +450,10 @@ class PlanningAgent(Agent):
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
             counter += 1
+            if len(fringe) == 0:
+                return None
             node = fringe.pop(0)
+           
 
         path = []
 
