@@ -306,6 +306,7 @@ class PlanningAgent(Agent):
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
         self.destination_bank = []
         self.limit = limit
+        self.expansions = 0
         super().__init__("planning")
 
     def next_action(self, observation: Dict):
@@ -490,7 +491,7 @@ class PlanningAgent(Agent):
         return node_with_people == []
 
     def expand(self, heuristic, parent_node):
-
+        self.expansions += 1
         data = parent_node.data
 
         parent_graph = data["graph"]  # type: Gr.Graph
@@ -532,16 +533,20 @@ class PlanningAgent(Agent):
         return weight
     def MST_heuristic_ppl(self, state):
         graph = state["graph"]  # type: Gr.Graph
+        G = Gr.Graph(graph.graph.copy(),graph.weights.copy())
         ppl_sum = sum([state["people_location"][k] for k in state["people_location"]])
         edges_sum = 0
-        for e in graph.weights:
+        for e in G.weights:
             n1,n2 = e
+            if n1 == 3 and n2 == 7:
+                print('*'*50)
+                print(G.weights[e])
             p1,p2 = state["people_location"][n1],state["people_location"][n2]
-            graph.weights[e] += ppl_sum - p1 - p2
-            edges_sum += graph.weights[e]
-        for e in graph.weights:
-            graph.weights[e] /= edges_sum
+            G.weights[e] += ppl_sum - p1 - p2
+            edges_sum += G.weights[e]
+        for e in G.weights:
+            G.weights[e] /= edges_sum
             
-        _, weight = graph.min_spanning_tree_kruskal([])
+        _, weight = G.min_spanning_tree_kruskal([])
 
         return weight
