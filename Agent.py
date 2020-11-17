@@ -410,9 +410,10 @@ class PlanningAgent(Agent):
         current_location = observation["agents_location"][self.get_id()]
         source_node = current_location[1]
 
-        observation["people_location"][source_node] = 0
         # Find nodes where there is more than one men
-        people_locations = [node for node, people in observation["people_location"].items() if people > 0]
+        people_locations = [node for node, people in observation["people_location"].items() if people > 0 and node != source_node
+                                                                                                ]
+
         people_locations_copy = people_locations.copy()
 
         new_edges = {}
@@ -440,14 +441,11 @@ class PlanningAgent(Agent):
         fringe = [Link(None, self.initial_state(problem))]
 
         counter = 0
-        node = None
-        while counter < limit:
+        node = fringe.pop(0)
+        while counter < limit or not self.goal_test(node):
             if len(fringe) == 0:
                 return None
-            node = fringe.pop(0)
 
-            if self.goal_test(node)  :
-                break
             new_nodes = self.expand(heuristic, node)
 
             self.expansions += 1
@@ -455,6 +453,7 @@ class PlanningAgent(Agent):
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
             counter += 1
+            node = fringe.pop(0)
 
         path = []
 
