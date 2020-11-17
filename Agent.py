@@ -298,28 +298,36 @@ class PlanningAgent(Agent):
     @classmethod
     def create_agent(cls):
         """Agent factory function"""
-        return PlanningAgent()
+        print("Should the agent be greedy ( G ), full planner ( F ) or online planner ( O )")
+        answer = input()
+        if answer == "G" or answer == "g":
+            return PlanningAgent("greedy", limit=2)
+        elif answer == "O" or answer == "o":
+            print("Please enter the limit of expantions:")
+            limit = int(input())
+            return PlanningAgent("online", limit=limit)
+        return PlanningAgent("full")
 
-    def __init__(self,limit=1000):
+    def __init__(self, type, limit=10000):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
-        self.destination_bank = []
+        self.destination_bank = []  # The sequence of nodes to visit that were returned by planner
         self.limit = limit
         self.expansions = 0
-        super().__init__("planning")
+
+        super().__init__("planning_{}".format(type))
 
     def next_action(self, observation: Dict):
 
         print()
-        # print("**********************  Greedy agent  ***************************")
+        # print("**********************  Search agent  ***************************")
         is_previous_succeed = observation["agents_last_action"][self.id]
 
         # If the previous action failed - terminate and don't do anything ( no-op )
         if not is_previous_succeed or self.is_terminated:
             self.is_terminated = True
             return {"action_tag": "no-op", "action_details": {"agent_id": self.id}}
-
 
         # If the agent is on the way somewhere , find next action to send ( according to the path )
         # Or if the agent arrived to the destination return {}
@@ -335,6 +343,7 @@ class PlanningAgent(Agent):
                 return next_action
 
         # Compute the next destination node ( the nearest node with people )
+        # Or a sequence of destinations ( verteces to visit )
         self.compute_destination(observation)
 
         # If can't compute the next destination , terminate
@@ -359,9 +368,11 @@ class PlanningAgent(Agent):
         self.current_path = []
 
         if len(self.destination_bank) == 0:
-            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic,self.limit)
+            self.destination_bank = self.make_plan_A_star(observation, PlanningAgent.MST_heuristic, self.limit)
 
             self.destination_bank.pop(0)
+            if self.type == "planning_online":
+                self.destination_bank = self.destination_bank[:1]
 
         if len(self.destination_bank) == 0:
             self.current_destination = None
@@ -369,7 +380,7 @@ class PlanningAgent(Agent):
 
         self.current_destination = self.destination_bank.pop(0)
 
-        _,self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
+        _, self.current_path = graph.get_shortest_path_Dijk(node2, self.current_destination, blocked_edges)
 
     def next_traverse_action(self, observation):
         node1, node2, distance = observation["agents_location"][self.get_id()]
@@ -444,7 +455,7 @@ class PlanningAgent(Agent):
             people_locations = people_locations[1:]
 
         new_graph = Gr.Graph(new_graph, new_edges)
-        sp_tree = new_graph.min_spanning_tree_kruskal([])
+
         return new_graph
 
     def make_plan_A_star(self, problem, heuristic, limit):
@@ -457,18 +468,20 @@ class PlanningAgent(Agent):
                 return None
             node = fringe.pop(0)
 
-            if self.goal_test(node):
+            if self.goal_test(node)  :
                 break
             new_nodes = self.expand(heuristic, node)
+
+            self.expansions += 1
+
             fringe.extend(new_nodes)
             fringe.sort(key=lambda link: link.data["f_value"])
             counter += 1
 
         path = []
 
-
         while node != None:
-            _,vertex,_ = node.data["agents_location"][self.get_id()]
+            _, vertex, _ = node.data["agents_location"][self.get_id()]
             path.append(vertex)
             node = node.prev
         path.reverse()
@@ -492,7 +505,6 @@ class PlanningAgent(Agent):
         return node_with_people == []
 
     def expand(self, heuristic, parent_node):
-        self.expansions += 1
         data = parent_node.data
 
         parent_graph = data["graph"]  # type: Gr.Graph
@@ -507,7 +519,7 @@ class PlanningAgent(Agent):
             new_people_location[neib] = 0
 
             new_agent_location = {}
-            new_agent_location[self.get_id()] = [neib,neib, 0]
+            new_agent_location[self.get_id()] = [neib, neib, 0]
 
             new_graph = self.graph_reduction({"graph": parent_graph,
                                               "people_location": new_people_location,
@@ -519,9 +531,12 @@ class PlanningAgent(Agent):
 
                          "g_value": parent_g_value + weight,
                          "f_value": None}
-            h_value = heuristic(self,new_state)
+            h_value = heuristic(self, new_state)
 
-            new_state["f_value"] = new_state["g_value"] + h_value
+            if self.type == "planning_greedy":
+                new_state["f_value"] = h_value
+            else:
+                new_state["f_value"] = new_state["g_value"] + h_value
 
             child_nodes_list.append(Link(parent_node, new_state))
 
@@ -532,22 +547,23 @@ class PlanningAgent(Agent):
         _, weight = graph.min_spanning_tree_kruskal([])
 
         return weight
+
     def MST_heuristic_ppl(self, state):
         graph = state["graph"]  # type: Gr.Graph
-        G = Gr.Graph(graph.graph.copy(),graph.weights.copy())
+        G = Gr.Graph(graph.graph.copy(), graph.weights.copy())
         ppl_sum = sum([state["people_location"][k] for k in state["people_location"]])
         edges_sum = 0
         for e in G.weights:
-            n1,n2 = e
+            n1, n2 = e
             if n1 == 3 and n2 == 7:
-                print('*'*50)
+                print('*' * 50)
                 print(G.weights[e])
-            p1,p2 = state["people_location"][n1],state["people_location"][n2]
+            p1, p2 = state["people_location"][n1], state["people_location"][n2]
             G.weights[e] += ppl_sum - p1 - p2
             edges_sum += G.weights[e]
         for e in G.weights:
             G.weights[e] /= edges_sum
-            
+
         _, weight = G.min_spanning_tree_kruskal([])
 
         return weight
