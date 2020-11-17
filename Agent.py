@@ -358,7 +358,7 @@ class PlanningAgent(Agent):
         self.current_path = []
 
         if len(self.destination_bank) == 0:
-            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic,self.limit)
+            self.destination_bank = self.make_plan_A_star(observation,PlanningAgent.MST_heuristic_ppl,self.limit)
 
             self.destination_bank.pop(0)
 
@@ -527,6 +527,21 @@ class PlanningAgent(Agent):
 
     def MST_heuristic(self, state):
         graph = state["graph"]  # type: Gr.Graph
+        _, weight = graph.min_spanning_tree_kruskal([])
+
+        return weight
+    def MST_heuristic_ppl(self, state):
+        graph = state["graph"]  # type: Gr.Graph
+        ppl_sum = sum([state["people_location"][k] for k in state["people_location"]])
+        edges_sum = 0
+        for e in graph.weights:
+            n1,n2 = e
+            p1,p2 = state["people_location"][n1],state["people_location"][n2]
+            graph.weights[e] += ppl_sum - p1 - p2
+            edges_sum += graph.weights[e]
+        for e in graph.weights:
+            graph.weights[e] /= edges_sum
+            
         _, weight = graph.min_spanning_tree_kruskal([])
 
         return weight
