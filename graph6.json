@@ -1,0 +1,4 @@
+{ "nodes_num" :  2,
+    "deadline" :  20,
+    "node_people" :  [[1,1],[2,1]],
+    "n1_n2_weight" :  [[1,2,1]]}

@@ -103,6 +103,7 @@ class Simulator:
         self.print_env(observation,[],init=True)
         while not is_finished:
             actions = [None]
+            self.time_passed += 1
             for agent in agent_list:
                 
                 # Recieve action from the current agent
@@ -120,8 +121,6 @@ class Simulator:
                     self.agents_pickup_times[agent.get_id()] = self.agents_times[agent.get_id()]
                 if action['action_tag'] == 'terminate':
                     agent.is_agent_terminated(True)
-
-            self.time_passed += 1
             self.print_env(observation,actions)
             if self.is_simulation_finished(agent_list,observation):
                 # is_finished = True
@@ -213,4 +212,4 @@ if __name__ == '__main__':
         print(f'\nFor T={Ts[j]}')
         for i,agent in zip(range(1,len(results)+1),res):
             time,ppl,t = agent
-            print(f'Agent {i} of type {t}: collected {ppl} people in {time} time units and got a preformance measure of {ppl/time} which is number of people saved per time unit') 
+            print(f'Agent {i} of type {t}: collected {ppl} people in {time} time units and got a preformance measure of {ppl+ppl/time} which is number of people saved per time unit + the total amount of people collected by the agent') 

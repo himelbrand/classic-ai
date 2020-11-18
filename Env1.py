@@ -58,7 +58,6 @@ class Environment:
         It receives an action ( dictionary ) of the following format {\"action_tag\" : ..., \"action_details\" : ....} and
         invokes the function from action_reaction dict according to action_tag
         The function returns current environment state"""
-
         agent = action['action_details']['agent_id']
         current_node = self.agents_location[agent][0]
         people_collected = self.people_location.get(current_node, 0)

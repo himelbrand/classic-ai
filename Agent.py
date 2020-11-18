@@ -450,9 +450,20 @@ class SearchAgent(Agent):
 
         return new_graph
 
+    def people_remaining(self,problem):
+        agents_loc = problem['agents_location']
+        people_loc = problem['people_location']
+        origin,dest,rd = agents_loc[self.id]
+        to_ignore = origin if origin == dest and rd == 0 else -1
+        people_count = sum([people_loc[n] for n in people_loc if n != to_ignore])
+        return people_count
+
+
     def make_plan_A_star(self, problem, heuristic, limit):
         fringe = [Link(None, self.initial_state(problem))]
-
+        if self.people_remaining(problem) == 0:
+            self.last_expansions = 0
+            return None
         counter = 0
         node = fringe.pop(0)
         while counter < limit and not self.goal_test(node):
