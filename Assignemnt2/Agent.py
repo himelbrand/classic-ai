@@ -369,7 +369,7 @@ class SearchAgent(Agent):
         self.current_path = []
 
         if len(self.destination_bank) == 0:
-            self.destination_bank = self.make_plan_A_star(observation, SearchAgent.MST_heuristic_ppl, self.limit)
+            self.destination_bank = self.make_plan_A_star(observation, SearchAgent.MST_heuristic, self.limit)
             if self.destination_bank is None:
                 self.current_destination = None
                 return
@@ -391,7 +391,6 @@ class SearchAgent(Agent):
         # If the agent is on the edge keep moving towards the destination ( dest)
         if origin != dest:
             return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest, 'expansions':self.last_expansions}}
-
         # If the agent arrived to the destination , return empty dict
         if dest == self.current_destination or self.current_destination is None:
             self.current_path = []
