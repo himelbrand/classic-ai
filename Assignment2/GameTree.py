@@ -54,6 +54,7 @@ class GameState:
     def __str__(self):
         a1,a2 = (self.agent1,self.agent2) if self.agent1.id < self.agent2.id else (self.agent2,self.agent1)
         return f'{self.people_locs}_{a1}_{a2}'
+        
 class Node:
     def __init__(self,state:GameState,current_level:int,cutoff:int,visited:set):
         if current_level%2 == 0:
@@ -106,6 +107,7 @@ class GameTree:
         A1 = AgentState(o1,t1,observation['people_collected'][agent1.get_id()],agent1.is_terminated,agent1.t,d1,agent1.location,agent1.get_id())
         A2 = AgentState(o2,t2,observation['people_collected'][agent2.get_id()],agent2.is_terminated,agent2.t,d2,agent2.location,agent2.get_id())
         return GameState(A1,A2,observation['people_location'].copy(),graph.weights,graph.graph,deadline)
+
     def __init__(self,agent1,agent2,observation,cutoff,h=basic_h):
         self.h = h
         self.deadline = observation['deadline']
@@ -225,10 +227,7 @@ class GameTree:
         v_max = float('-inf')
         for a,s in root.successors:
             v = self.maxFully(s,self.cooperative_utility,visited)
-            print(v)
-            print(a)
             if v > v_max:
                 v_max = v
                 best_a = a
-        # print(v_max)
         return best_a

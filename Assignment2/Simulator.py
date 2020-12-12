@@ -3,7 +3,7 @@ import Agent
 from typing import List
 from collections import defaultdict
 import utils
-global_file_name = "graph1.json"
+global_file_name = "graph2.json"
 
 
 class Simulator:
@@ -37,32 +37,17 @@ class Simulator:
     
         agents_list = []  # type: List [Agent]
         agent_locations = {}
-        
+        cutoff = utils.promptIntegerPositive('\nPlease enter cutoff')
+        loc1 = utils.promptIntegerFromRange('\nPlease enter Agent 1 location (node number) ',graph.graph.keys())
+        loc2 = utils.promptIntegerFromRange('\nPlease enter Agent 2 location (node number) ',graph.graph.keys())
         if game_type == 0:
-            cutoff = utils.promptIntegerPositive('Please enter cutoff for both agents: ')
-            print('Agent 1 - initilization')
-            loc1 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.MiniMaxAgent.create_agent(loc1,cutoff))
-            print('Agent 2 - initilization')
-            loc2 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.MiniMaxAgent.create_agent(loc2,cutoff))
         elif game_type == 1:
-            print('SEMI!!!')
-            cutoff = utils.promptIntegerPositive('Please enter cutoff for both agents: ')
-            print('Agent 1 - initilization')
-            loc1 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.SemiCooperativeAgent.create_agent(loc1,cutoff))
-            print('Agent 2 - initilization')
-            loc2 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.SemiCooperativeAgent.create_agent(loc2,cutoff))
         elif game_type == 2:
-            print('FULLY!!!')
-            cutoff = utils.promptIntegerPositive('Please enter cutoff for both agents: ')
-            print('Agent 1 - initilization')
-            loc1 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.FullyCooperativeAgent.create_agent(loc1,cutoff))
-            print('Agent 2 - initilization')
-            loc2 = utils.promptIntegerFromRange('Please enter agent location (node number): ',graph.graph.keys())
             agents_list.append(Agent.FullyCooperativeAgent.create_agent(loc2,cutoff))
         agent_locations = {agent.get_id(): [agent.location, agent.location, 0] for agent in agents_list}
         print("\n\nInitializing environment")
@@ -175,15 +160,13 @@ class Simulator:
 
 
 if __name__ == '__main__':
-    results = []
     print('\n\nStarting HW2 Simulator!\n\n')
-    simulator = Simulator()
-    agents, env = simulator.initialize_env()
-    results.append(simulator.simulation_loop(env, agents))
-
-    print('Preformance evaluation')
-    
-    for j,res in enumerate(results):
-        for i,agent in zip(range(1,len(results)+1),res):
-            time,ppl,t = agent
-            print(f'Agent {i} of type {t}: collected {ppl} people in {time} time units and got a preformance measure of {ppl+ppl/time} which is number of people saved per time unit + the total amount of people collected by the agent') 
+    i=1
+    running = True
+    while running:
+        print(f'Starting simulation #{i}')
+        simulator = Simulator()
+        agents, env = simulator.initialize_env()
+        simulator.simulation_loop(env, agents)
+        running = utils.promptMenu('\n\nDo you want to run another simulation? ',{'Yes':True,'No':False})
+        i+=1
