@@ -14,7 +14,6 @@ def get_shortest_path_Dijk(G,origin,dest,blocked=None,nodes_to_avoid=None):
     nodes = G.graph.keys()
     node_parents = {node: None for node in nodes}
     node_dists = {node: [float("inf"), node] for node in nodes}
-
     node_dists[origin] = [0, origin]
     Q = [[0, origin]]
 
