@@ -1,7 +1,7 @@
 from typing import Dict, List, Set, Tuple
 import Graph as Gr
 import distance_algs as algo
-
+from GameTree import GameTree
 """Parent type of all the agents"""
 
 
@@ -26,10 +26,15 @@ class Agent:
         # Get unique id to each agent
         Agent.next_id = 0
 
-    def __init__(self, agent_type: str):
+    def __init__(self, agent_type: str,loc):
         self.id = Agent.__get_unique_id()
         self.type = agent_type
         self.is_terminated = False
+        self.score = 0
+        self.t = 0
+        self.location = loc
+        self.traversing = False
+
 
     def get_id(self):
         return self.id
@@ -42,17 +47,137 @@ class Agent:
         if terminate:
             self.is_terminated = True
         return self.is_terminated
+            
+class MiniMaxAgent(Agent):
+    @classmethod
+    def create_agent(cls,loc,cutoff):
+        """Agent factory function"""
+        return MiniMaxAgent(loc,cutoff)
 
+
+    def __init__(self,loc,cutoff):
+        super().__init__("minimax",loc)
+        self.cutoff = cutoff
+        self.visited = set()
+    def next_action(self, observation: Dict):
+        # Check whether my previous action succeed , if not - terminate
+        is_previous_succeed = observation["agents_last_action"][self.id]
+        second_agent = observation['agents'][self.id%2]
+        observed_state = GameTree.generateGameState(self,second_agent,observation)
+        if str(observed_state) in self.visited:
+            print('WTF')
+        self.visited.add(str(observed_state))
+        if not is_previous_succeed:
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        current_location = observation["agents_location"][self.id]
+        
+        # Destination node and remaining distance
+        _,dest,rd = current_location
+       
+        if rd:
+            self.traversing = True
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
+        
+        if not is_previous_succeed or self.is_terminated:
+            self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        if second_agent.id ==self.id:
+            print('WTF!!!',self.id)
+        tree = GameTree(self,second_agent,observation,self.cutoff)
+        self.visited.add(str(tree.state))
+        a,dest = tree.alpha_beta_decision(self.visited)
+        return {'action_tag':a,'action_details':{'agent_id':self.id,'to':dest}}
+
+class SemiCooperativeAgent(Agent):
+    @classmethod
+    def create_agent(cls,loc,cutoff):
+        """Agent factory function"""
+        return SemiCooperativeAgent(loc,cutoff)
+
+
+    def __init__(self,loc,cutoff):
+        super().__init__("Semi-cooperative",loc)
+        self.cutoff = cutoff
+        self.visited = set()
+    
+    def next_action(self, observation: Dict):
+        # Check whether my previous action succeed , if not - terminate
+        is_previous_succeed = observation["agents_last_action"][self.id]
+        second_agent = observation['agents'][self.id%2]
+        observed_state = GameTree.generateGameState(self,second_agent,observation)
+        if str(observed_state) in self.visited:
+            print('WTF')
+        self.visited.add(str(observed_state))
+        if not is_previous_succeed:
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        current_location = observation["agents_location"][self.id]
+        
+        # Destination node and remaining distance
+        _,dest,rd = current_location
+       
+        if rd:
+            self.traversing = True
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
+        
+        if not is_previous_succeed or self.is_terminated:
+            self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        
+        tree = GameTree(self,second_agent,observation,self.cutoff)
+        self.visited.add(str(tree.state))
+        a,dest = tree.semi_decision(self.visited)
+        
+        return {'action_tag':a,'action_details':{'agent_id':self.id,'to':dest}}
+
+class FullyCooperativeAgent(Agent):
+    @classmethod
+    def create_agent(cls,loc,cutoff):
+        """Agent factory function"""
+        return FullyCooperativeAgent(loc,cutoff)
+
+
+    def __init__(self,loc,cutoff):
+        super().__init__("Fully-cooperative",loc)
+        self.cutoff = cutoff
+        self.visited = set()
+    
+    def next_action(self, observation: Dict):
+        # Check whether my previous action succeed , if not - terminate
+        is_previous_succeed = observation["agents_last_action"][self.id]
+        second_agent = observation['agents'][self.id%2]
+        observed_state = GameTree.generateGameState(self,second_agent,observation)
+        if str(observed_state) in self.visited:
+            print('WTF')
+        self.visited.add(str(observed_state))
+        if not is_previous_succeed:
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        current_location = observation["agents_location"][self.id]
+        
+        # Destination node and remaining distance
+        _,dest,rd = current_location
+       
+        if rd:
+            self.traversing = True
+            return {"action_tag": "traverse", "action_details": {"agent_id": self.id, "to": dest}}
+        
+        if not is_previous_succeed or self.is_terminated:
+            self.is_terminated = True
+            return {"action_tag": "terminate", "action_details": {"agent_id": self.id}}
+        
+        tree = GameTree(self,second_agent,observation,self.cutoff)
+        self.visited.add(str(tree.state))
+        a,dest = tree.fully_decision(self.visited)
+        return {'action_tag':a,'action_details':{'agent_id':self.id,'to':dest}}
 
 class HumanAgent(Agent):
 
     @classmethod
-    def create_agent(cls):
+    def create_agent(cls,loc):
         """Agent factory function"""
-        return HumanAgent()
+        return HumanAgent(loc)
 
-    def __init__(self):
-        super().__init__("human")
+    def __init__(self,loc):
+        super().__init__("human",loc)
 
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
@@ -93,7 +218,7 @@ class HumanAgent(Agent):
 class SaboteurAgent(Agent):
 
     @classmethod
-    def create_agent(cls):
+    def create_agent(cls,loc):
         """Agent factory function"""
         while True:
             try:
@@ -101,12 +226,12 @@ class SaboteurAgent(Agent):
                 break
             except:
                 print('Invalid choice, must be an integer...')
-        return SaboteurAgent(V)
+        return SaboteurAgent(V,loc)
 
-    def __init__(self, V):
+    def __init__(self, V,loc):
         self.V = V
         self.remaining_time = V + 1
-        super().__init__("saboteur")
+        super().__init__("saboteur",loc)
 
     def next_action(self, observation: Dict):
         """Main interface function of each agent - it receives the state  , and returns the action"""
@@ -181,15 +306,15 @@ class SaboteurAgent(Agent):
 class GreedyAgent(Agent):
 
     @classmethod
-    def create_agent(cls):
+    def create_agent(cls,loc):
         """Agent factory function"""
-        return GreedyAgent()
+        return GreedyAgent(loc)
 
-    def __init__(self):
+    def __init__(self,loc):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
-        super().__init__("greedy")
+        super().__init__("greedy",loc)
 
     def next_action(self, observation: Dict):
 
@@ -289,7 +414,7 @@ class GreedyAgent(Agent):
 class SearchAgent(Agent):
 
     @classmethod
-    def create_agent(cls):
+    def create_agent(cls,loc):
         """Agent factory function"""
         options = {'G':('greedy',1),'A':('A*',10000),'S':('simple_RT_A*',None)}
         while True:
@@ -306,11 +431,11 @@ class SearchAgent(Agent):
                     except:
                         print('Invalid input, limit must be an integer...')
             break
-        return SearchAgent(name,limit=limit)
+        return SearchAgent(name,loc,limit=limit)
             
             
 
-    def __init__(self, agent_type, limit=10000):
+    def __init__(self, agent_type,loc, limit=10000):
         self.current_destination = None  # Current destination node : may be any node
         self.current_path = []  # List of the nodes that are remain to agent to pass
         self.traversing_in_progress = False  # Whether the agent is on the way somewhere
@@ -319,7 +444,7 @@ class SearchAgent(Agent):
         self.expansions = 0
         self.last_expansions = 0
 
-        super().__init__("search_{}".format(agent_type))
+        super().__init__("search_{}".format(agent_type),loc)
 
     def next_action(self, observation: Dict):
         self.last_expansions = 0
