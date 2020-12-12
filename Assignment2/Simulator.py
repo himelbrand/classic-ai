@@ -3,7 +3,7 @@ import Agent
 from typing import List
 from collections import defaultdict
 import utils
-global_file_name = "graph2.json"
+global_file_name = "graph1.json"
 
 
 class Simulator:
@@ -128,18 +128,9 @@ class Simulator:
             print("================Initial Enviorment===============")
         else:
             print(f"\n\t\t================Time-step is {self.time_passed}/{self.deadline} it was Agent{1 if self.time_passed%2 else 2} move================\n")
-        # print("\n=====Graph information=====\n")
         G = observation['graph']
-        # P = observation['people_location']
         A = observation['agents_location']
-        # B = observation['blocked_edges']
         PC = observation['people_collected']
-        # E = observation['expansions']
-        # for n in G.graph:
-        #     print(f'Node {n}:\n')
-        #     print(f'\tPeople count is {P[n] if n in P else 0}')
-        #     neighbors = [f"{n_tag}-{w}" for n_tag,w in G.get_neigbours_and_weights(n) if (n,n_tag) not in B]
-        #     print(f'\tNeighbors-Distance: {", ".join(neighbors) if len(neighbors) else "No available neighbors!"}')
         for a in A:
             term = not init and a < len(actions) and actions[a] is None
             n1,n2,d = A[a]
@@ -164,9 +155,10 @@ if __name__ == '__main__':
     i=1
     running = True
     while running:
+        global_file_name = utils.promptMenu('What graph do you want to use? ',{'graph1':'graph1.json','graph2':'graph2.json'})
         print(f'Starting simulation #{i}')
         simulator = Simulator()
         agents, env = simulator.initialize_env()
         simulator.simulation_loop(env, agents)
-        running = utils.promptMenu('\n\nDo you want to run another simulation? ',{'Yes':True,'No':False})
+        running = utils.promptMenu('\n\nDo you want to run another simulation? ',{'No':False,'Yes':True})
         i+=1
