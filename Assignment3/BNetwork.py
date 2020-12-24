@@ -2,9 +2,14 @@ from typing import List, Dict, Tuple
 import json
 from random import random
 import itertools
+import utils
 
 global_nodes_types_dict = {"vertex": {}, "edge_0": {}}  # type: Dict[str,Dict[str,Node]]
 spontaneous_block_prob = 0.001
+
+global_nodes_number = 0
+global_max_time = 0
+global_number_of_iterations = 1000
 
 input_file = "graph2.json"
 
@@ -69,13 +74,13 @@ def weighted_sample(network, evidence_dict):
 
 
 def load_network(file_name, time_steps: int):
-    global global_nodes_types_dict
+    global global_nodes_types_dict, global_nodes_number
     with open(file_name) as f:
         json_dict = json.load(f)
 
     persistance = json_dict["persistance"]
 
-    nodes = list(range(1, json_dict["nodes_num"] + 1))
+    global_nodes_number = list(range(1, json_dict["nodes_num"] + 1))
 
     for vertex, prob in json_dict["node_prob"]:
         new_node = Node("vertex", str(vertex))
@@ -125,4 +130,43 @@ def load_network(file_name, time_steps: int):
 
 if __name__ == '__main__':
     load_network(input_file, 1)
-    likelihood_weightening(["0_1_2"],{"1":1,"2":1,"1_1_2":0},global_nodes_types_dict,10000)
+    print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
+
+
+def main_menu():
+    quit = False
+    evidence = {}
+    while not quit:
+        res = utils.promptMenu("Choose an action", {"Reset evidence": (lambda: evidence.clear()),
+                                                    "Add evidence": (lambda: add_evidence(evidence)),
+                                                    "Do reasoning": 3,
+                                                    "Quit": 4})
+
+
+def add_evidence(evidence):
+    res = utils.promptMenu("Which type of evidence do you want to add?", {"vertex": 0, "edge": 1})
+    if not res:
+        node = utils.promptIntegerPositive("Please enter node number:")
+        value = utils.promptIntegerFromRange("Are there people in it", {"Yes": 1, "No": 0})
+        id = str(node)
+    else:
+        node1 = utils.promptIntegerFromRange("Please enter node 1", list(range(1, global_nodes_number + 1)))
+        node2 = utils.promptIntegerFromRange("Please enter node 2", list(range(1, global_nodes_number + 1)))
+        time = utils.promptIntegerFromRange("Please enter time", list(range(0, global_max_time + 1)))
+        value = utils.promptIntegerFromRange("Is it blocked?", {"Yes": 1, "No": 0})
+        id = str(time) + "_" + str(node1) + "_" + str(node2)
+
+    evidence[id] = value
+
+
+def reasoning(evidence):
+    res = utils.promptMenu("Which type of reasoning do you want to do?", {"All vertices seperatly": 0,
+                                                                          "All edges seperatly": 1,
+                                                                          "Set of edges": 2})
+
+    if res == 0:
+        resulting_distribution = likelihood_weightening(global_nodes_types_dict["vertex"],
+                                                        evidence, global_nodes_types_dict, global_number_of_iterations)
+
+    elif res == 1:
+        ...
