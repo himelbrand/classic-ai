@@ -1,0 +1,6 @@
+{ "nodes_num" :  2,
+    "persistance" :  0.7,
+    "node_prob" :  [[1,0.1],[2,0.1]],
+    "n1_n2_weight" :  [[1,2,1]]}
+  
+  
