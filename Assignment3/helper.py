@@ -5,11 +5,12 @@ def mul(myList):
         result = result * x
     return result
 
-def do(a,b):
-    a = mul(a)
-    b = mul(b)
-    sum1 =a + b
-    return [a/sum1,b/sum1]
+
+def do(lst):
+    mul1 = [mul(lst1) for lst1 in lst]
+    sum1 = sum(mul1)
+    return [item / sum1 for item in mul1]
 
 
-print(do([0.7,0.001,0.7,0.8],[0.001,0.999,0.7,0.8]))
+# print(do([[0.84,0.2,0.3,1],[0.6,0.2,0.7,1],[0.6,0.8,0.3,1],[0.001,0.8,0.7,1]]))
+print(do([[0.84, 0.2, 0.3, 1], [0.6, 0.8, 0.3, 1]]))

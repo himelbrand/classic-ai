@@ -7,10 +7,11 @@ import utils
 global_nodes_types_dict = {"vertex": {}, "edge_0": {}}  # type: Dict[str,Dict[str,Node]]
 spontaneous_block_prob = 0.001
 
-global_nodes_number = 0
+global_nodes = []
 global_max_time = 0
 global_number_of_iterations = 1000
 
+global_edge_weights = {}
 input_file = "graph2.json"
 
 
@@ -74,13 +75,13 @@ def weighted_sample(network, evidence_dict):
 
 
 def load_network(file_name, time_steps: int):
-    global global_nodes_types_dict, global_nodes_number
+    global global_nodes_types_dict, global_nodes, global_edge_weights
     with open(file_name) as f:
         json_dict = json.load(f)
 
     persistance = json_dict["persistance"]
 
-    global_nodes_number = list(range(1, json_dict["nodes_num"] + 1))
+    global_nodes = list(range(1, json_dict["nodes_num"] + 1))
 
     for vertex, prob in json_dict["node_prob"]:
         new_node = Node("vertex", str(vertex))
@@ -88,6 +89,7 @@ def load_network(file_name, time_steps: int):
         new_node.initialized = True
         global_nodes_types_dict["vertex"][str(vertex)] = new_node
 
+    global_edge_weights = {(n1,n2):weight for n1,n2,weight in json_dict["n1_n2_weight"]}
     for v1, v2, weight in json_dict["n1_n2_weight"]:
         new_id = "0_" + str(v1) + "_" + str(v2)
         new_node = Node("edge_0", new_id)
@@ -128,32 +130,17 @@ def load_network(file_name, time_steps: int):
     print("Stop")
 
 
-if __name__ == '__main__':
-    load_network(input_file, 1)
-    print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
-
-
-def main_menu():
-    quit = False
-    evidence = {}
-    while not quit:
-        res = utils.promptMenu("Choose an action", {"Reset evidence": (lambda: evidence.clear()),
-                                                    "Add evidence": (lambda: add_evidence(evidence)),
-                                                    "Do reasoning": 3,
-                                                    "Quit": 4})
-
-
 def add_evidence(evidence):
     res = utils.promptMenu("Which type of evidence do you want to add?", {"vertex": 0, "edge": 1})
     if not res:
         node = utils.promptIntegerPositive("Please enter node number:")
-        value = utils.promptIntegerFromRange("Are there people in it", {"Yes": 1, "No": 0})
+        value = utils.promptMenu("Are there people in it", {"No": 0, "Yes": 1})
         id = str(node)
     else:
-        node1 = utils.promptIntegerFromRange("Please enter node 1", list(range(1, global_nodes_number + 1)))
-        node2 = utils.promptIntegerFromRange("Please enter node 2", list(range(1, global_nodes_number + 1)))
+        node1 = utils.promptIntegerFromRange("Please enter node 1", global_nodes)
+        node2 = utils.promptIntegerFromRange("Please enter node 2", global_nodes)
         time = utils.promptIntegerFromRange("Please enter time", list(range(0, global_max_time + 1)))
-        value = utils.promptIntegerFromRange("Is it blocked?", {"Yes": 1, "No": 0})
+        value = utils.promptMenu("Is it blocked?", { "No": 0,"Yes": 1})
         id = str(time) + "_" + str(node1) + "_" + str(node2)
 
     evidence[id] = value
@@ -165,8 +152,65 @@ def reasoning(evidence):
                                                                           "Set of edges": 2})
 
     if res == 0:
-        resulting_distribution = likelihood_weightening(global_nodes_types_dict["vertex"],
-                                                        evidence, global_nodes_types_dict, global_number_of_iterations)
+        verteces = list(global_nodes_types_dict["vertex"].keys())
+        resulting_join_distribution = likelihood_weightening(verteces,
+                                                             evidence, global_nodes_types_dict,
+                                                             global_number_of_iterations)
+        resulting_destributions = {}
+
+        for i, vertex in zip(range(len(verteces)), verteces):
+            summ = 0
+            for values, join_prob in resulting_join_distribution.items():
+                if values[i] == 1:
+                    summ += join_prob
+            resulting_destributions[vertex] = summ
+
+        print(resulting_destributions)
 
     elif res == 1:
-        ...
+        edges = [node for type, nodes in global_nodes_types_dict.items() if "edge" in type for node in nodes.values()]
+        resulting_join_distribution = likelihood_weightening(edges,
+                                                        evidence, global_nodes_types_dict, global_number_of_iterations)
+
+        resulting_destributions = {}
+
+        for i, vertex in zip(range(len(edges)), edges):
+            summ = 0
+            for values, join_prob in resulting_join_distribution.items():
+                if values[i] == 1:
+                    summ += join_prob
+            resulting_destributions[vertex] = summ
+
+    elif res == 3:
+        node1 = 0
+        required_path = []
+        while node1 > -1:
+            node1 = utils.promptIntegerFromRange("Please enter node or -1 if you finished",
+                                                 global_nodes)
+            required_path.append(node1)
+
+        time = 0
+        for i in range(len(required_path)-1):
+            node1 = required_path[i]
+            node2 = required_path[i+1]
+            edge = (min(node1,node2),max(node1,node2))
+            weight = global_edge_weights[edge]
+            for t in range(weight):
+                ...
+
+
+def main_menu():
+    quit = False
+    evidence = {}
+    while not quit:
+        res = utils.promptMenu("Choose an action", {"Reset evidence": (lambda: evidence.clear()),
+                                                    "Add evidence": (lambda: add_evidence(evidence)),
+                                                    "Do reasoning": lambda: reasoning(evidence),
+                                                    "Quit": 4})
+        res()
+
+
+if __name__ == '__main__':
+    load_network(input_file, 1)
+    main_menu()
+    print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
