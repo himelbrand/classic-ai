@@ -10,7 +10,7 @@ spontaneous_block_prob = 0.001
 
 global_nodes = []
 global_max_time = 0
-global_number_of_iterations = 1000
+global_number_of_iterations = 10000
 
 global_edge_weights = {}
 input_file = "graph3.json"
@@ -158,7 +158,7 @@ def reasoning(evidence):
                                                              evidence, global_nodes_types_dict,
                                                              global_number_of_iterations)
         resulting_destributions = {}
-        pprint(resulting_join_distribution)
+        print(resulting_join_distribution)
         for i, vertex in zip(range(len(verteces)), verteces):
             summ = 0
             for values, join_prob in resulting_join_distribution.items():
@@ -169,35 +169,43 @@ def reasoning(evidence):
         print(resulting_destributions)
 
     elif res == 1:
-        edges = [node for type, nodes in global_nodes_types_dict.items() if "edge" in type for node in nodes.values()]
+        edges = [node for type, nodes in global_nodes_types_dict.items() if "edge" in type for node in nodes.keys()]
         resulting_join_distribution = likelihood_weightening(edges,
                                                         evidence, global_nodes_types_dict, global_number_of_iterations)
 
         resulting_destributions = {}
 
-        for i, vertex in zip(range(len(edges)), edges):
+        for i, edge in zip(range(len(edges)), edges):
             summ = 0
             for values, join_prob in resulting_join_distribution.items():
                 if values[i] == 1:
                     summ += join_prob
-            resulting_destributions[vertex] = summ
+            resulting_destributions[edge] = summ
 
-    elif res == 3:
+        print(resulting_destributions)
+
+    elif res == 2:
         node1 = 0
         required_path = []
-        while node1 > -1:
+        while 1:
             node1 = utils.promptIntegerFromRange("Please enter node or -1 if you finished",
-                                                 global_nodes)
+                                                 global_nodes + [-1])
+            if node1 == -1:
+                break
             required_path.append(node1)
 
-        time = 0
+        edges = []
         for i in range(len(required_path)-1):
             node1 = required_path[i]
             node2 = required_path[i+1]
-            edge = (min(node1,node2),max(node1,node2))
-            weight = global_edge_weights[edge]
-            for t in range(weight):
-                ...
+
+            edges.append("0_"+str(min(node1,node2)) + "_" + str(max(node1,node2)))
+        resulting_join_distribution = likelihood_weightening(edges,
+                                                                 evidence, global_nodes_types_dict,global_number_of_iterations)
+
+        all_not_blocked = tuple ([0]*(len(required_path) - 1))
+
+        print(resulting_join_distribution[all_not_blocked])
 
 
 def main_menu():
