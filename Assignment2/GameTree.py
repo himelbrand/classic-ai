@@ -165,7 +165,6 @@ class GameTree:
         best_a = None
         max_val = float('-inf')
         for a,s in root.successors:
-            
             v,_ = self.minValue(s,float('-inf'),float('inf'),self.zero_sum_utility,self.maxValue)
             if v > max_val:
                 max_val = v
