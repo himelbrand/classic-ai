@@ -3,6 +3,7 @@ import json
 from random import random
 import itertools
 import utils
+from pprint import pprint
 
 global_nodes_types_dict = {"vertex": {}, "edge_0": {}}  # type: Dict[str,Dict[str,Node]]
 spontaneous_block_prob = 0.001
@@ -12,7 +13,7 @@ global_max_time = 0
 global_number_of_iterations = 1000
 
 global_edge_weights = {}
-input_file = "graph2.json"
+input_file = "graph3.json"
 
 
 class Node:
@@ -157,7 +158,7 @@ def reasoning(evidence):
                                                              evidence, global_nodes_types_dict,
                                                              global_number_of_iterations)
         resulting_destributions = {}
-
+        pprint(resulting_join_distribution)
         for i, vertex in zip(range(len(verteces)), verteces):
             summ = 0
             for values, join_prob in resulting_join_distribution.items():
@@ -200,14 +201,14 @@ def reasoning(evidence):
 
 
 def main_menu():
-    quit = False
+    q = False
     evidence = {}
-    while not quit:
+    while not q:
         res = utils.promptMenu("Choose an action", {"Reset evidence": (lambda: evidence.clear()),
                                                     "Add evidence": (lambda: add_evidence(evidence)),
                                                     "Do reasoning": lambda: reasoning(evidence),
-                                                    "Quit": 4})
-        res()
+                                                    "Quit": lambda: True})
+        q = res()
 
 
 if __name__ == '__main__':
