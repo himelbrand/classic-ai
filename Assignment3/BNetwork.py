@@ -13,7 +13,7 @@ global_max_time = 0
 global_number_of_iterations = 10000
 
 global_edge_weights = {}
-input_file = "graph3.json"
+input_file = "graph1.json"
 
 
 class Node:
@@ -103,9 +103,9 @@ def load_network(file_name, time_steps: int):
         parent1.children.append(new_node)
         parent2.children.append(new_node)
 
-        new_node.table.update({(1, 1): 1 - 0.16 / (weight ** 2),
-                               (1, 0): 1 - 0.4 / weight,
-                               (0, 1): 1 - 0.4 / weight,
+        new_node.table.update({(1, 1): (1 - 0.16) / weight ,
+                               (1, 0): (1 - 0.4) / weight,
+                               (0, 1): (1 - 0.4) / weight,
                                (0, 0): spontaneous_block_prob})
         new_node.initialized = True
 
@@ -134,7 +134,7 @@ def load_network(file_name, time_steps: int):
 def add_evidence(evidence):
     res = utils.promptMenu("Which type of evidence do you want to add?", {"vertex": 0, "edge": 1})
     if not res:
-        node = utils.promptIntegerPositive("Please enter node number:")
+        node = utils.promptIntegerFromRange("Please enter node number:",global_nodes)
         value = utils.promptMenu("Are there people in it", {"No": 0, "Yes": 1})
         id = str(node)
     else:
@@ -158,13 +158,15 @@ def reasoning(evidence):
                                                              evidence, global_nodes_types_dict,
                                                              global_number_of_iterations)
         resulting_destributions = {}
-        print(resulting_join_distribution)
+
         for i, vertex in zip(range(len(verteces)), verteces):
             summ = 0
             for values, join_prob in resulting_join_distribution.items():
                 if values[i] == 1:
                     summ += join_prob
             resulting_destributions[vertex] = summ
+
+
 
         print(resulting_destributions)
 
@@ -222,4 +224,4 @@ def main_menu():
 if __name__ == '__main__':
     load_network(input_file, 1)
     main_menu()
-    print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
+    #print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
