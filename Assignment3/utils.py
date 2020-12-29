@@ -65,14 +65,18 @@ def promptPath(valid_elements):
         except:
             print(f'Invalid choice: {ans}, all elements must be integers\nTry again')
 
-def findAllSimplePaths(n1,n2,nodes,edges):
+def findAllSimplePaths(n1,n2,nodes,edges,seen=set()):
     paths = []
     if n1 == n2:
         return [[n1]]
-    source = n1 if n1 < n2 else n2
-    target = n2 if n1 < n2 else n1
-    all_neighbors = [e[1] for e in edges if e[0] == source]
-    for n in all_neighbors:
-        for path_suffix in findAllSimplePaths(n,target,nodes,edges):
+    source = n1 
+    target = n2
+    all_edges = [e for e in edges if source in e]
+    for e in all_edges:
+        n = e[0] if n1 == e[1] else e[1]
+        seen.add(n1)
+        if n in seen:
+            continue
+        for path_suffix in findAllSimplePaths(n,target,nodes,edges,seen=seen):
             paths.append([source,*path_suffix])
     return paths

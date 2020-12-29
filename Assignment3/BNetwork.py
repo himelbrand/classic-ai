@@ -152,7 +152,7 @@ def reasoning(evidence):
     res = utils.promptMenu("Which type of reasoning do you want to do?", {"All vertices seperatly": 0,
                                                                           "All edges seperatly": 1,
                                                                           "Set of edges": 2,
-                                                                          'Find best path between 2 nodes':3})
+                                                                          'Find best path between 2 nodes (bonus)':3})
 
     if res == 0:
         print('\nReasoning about query...\n')
