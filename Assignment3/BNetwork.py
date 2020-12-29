@@ -13,7 +13,7 @@ global_max_time = 0
 global_number_of_iterations = 100000
 
 global_edge_weights = {}
-input_file = "graph3.json"
+input_file = "graph1.json"
 
 
 class Node:
@@ -135,7 +135,7 @@ def load_network(file_name, time_steps: int):
 def add_evidence(evidence):
     res = utils.promptMenu("Which type of evidence do you want to add?", {"vertex": 0, "edge": 1})
     if not res:
-        node = utils.promptIntegerPositive("Please enter node number:")
+        node = utils.promptIntegerFromRange("Please enter node number:",global_nodes)
         value = utils.promptMenu("Are there people in it", {"No": 0, "Yes": 1})
         id = str(node)
     else:
