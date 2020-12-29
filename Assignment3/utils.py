@@ -50,12 +50,18 @@ def promptIntegerPositive(title):
 def promptPath(valid_elements):
     print('Enter a path for inference')
     while True:
-        ans = input('\nPlease enter a set of nodes seperated by commas: ')
+        ans = input('\nPlease enter a sequnce of nodes seperated by commas: ')
         try:
-            path = set([int(n) for n in ans.split(',')])
-            if path.issubset(valid_elements):
-                return path
-            print(f'Invalid choice: {ans}, {path.difference(valid_elements)} ar not valid nodes \nTry again')
+            path = [int(n) for n in ans.split(',')]
+            edges = set()
+            for i in range(len(path)-1):
+                node1 = path[i]
+                node2 = path[i+1]
+                n1,n2 = (node1,node2) if node1 < node2 else (node2,node1)
+                edges.add((n1,n2))
+            if edges.issubset(valid_elements):
+                return edges
+            print(f'Invalid choice: {ans}, {edges.difference(valid_elements)} are not valid edges \nTry again')
         except:
             print(f'Invalid choice: {ans}, all elements must be integers\nTry again')
 

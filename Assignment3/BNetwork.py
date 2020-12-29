@@ -203,22 +203,16 @@ def reasoning(evidence):
 
     elif res == 2:
         node1 = 0
-        required_path = utils.promptPath(global_nodes)
-        required_path = list(sorted(required_path,key=lambda x: int(x)))
+        edges = utils.promptPath(global_edge_weights.keys())
         time = utils.promptIntegerFromRange("Please enter time", list(range(0, global_max_time + 1)))
         print('\nReasoning about query...\n')
-        edges = []
-        for i in range(len(required_path)-1):
-            node1 = required_path[i]
-            node2 = required_path[i+1]
-
-            edges.append(f"{time}_"+str(min(node1,node2)) + "_" + str(max(node1,node2)))
+        edges = [f"{time}_{n1}_{n2}" for (n1,n2) in edges]
         resulting_join_distribution = likelihood_weightening(edges,
                                                                  evidence, global_nodes_types_dict,global_number_of_iterations)
         if len(resulting_join_distribution) == 0:
             print('There seems to be a contradiction in given evidence!\nPlease reset evidence and try again!')
             return
-        all_not_blocked = tuple ([0]*(len(required_path) - 1))
+        all_not_blocked = tuple ([0]*(len(edges)))
         path_p = ','.join([f'~Blocakge E({",".join(e.split("_")[1:])})' for e in edges])
         print('Result of query:\n')
         print('Pr(%s) = %f'%(path_p,resulting_join_distribution[all_not_blocked]))
