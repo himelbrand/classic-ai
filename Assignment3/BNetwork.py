@@ -3,14 +3,14 @@ import json
 from random import random
 import itertools
 import utils
-from pprint import pprint
+import pprint
 
 global_nodes_types_dict = {"vertex": {}, "edge_0": {}}  # type: Dict[str,Dict[str,Node]]
 spontaneous_block_prob = 0.001
 
 global_nodes = []
 global_max_time = 0
-global_number_of_iterations = 10000
+global_number_of_iterations = 100000
 
 global_edge_weights = {}
 input_file = "graph3.json"
@@ -39,7 +39,9 @@ class Node:
 
     def get_domain(self):
         return (1, 0)
-
+    
+    def __str__(self):
+        return pprint.pformat({'parents': self.parents,'table':self.table})
 
 def likelihood_weightening(x_ids, evidence_dict, network, N):
     nodes = {node_id: node for nodes in network.values() for node_id, node in nodes.items()}
@@ -54,14 +56,13 @@ def likelihood_weightening(x_ids, evidence_dict, network, N):
 
     sum1 = sum(W.values())
 
-    return {key: (val / sum1) for key, val in W.items()}
+    return {key: (val / sum1) for key, val in W.items()} if sum1 else {}
 
 
 def weighted_sample(network, evidence_dict):
     evidence_dict = dict(evidence_dict)
     topological_nodes = [node for nodes in network.values() for node in nodes.values()]
     w = 1
-
     for node in topological_nodes:
         parents = node.get_parents_ids()
         parents_values = tuple([evidence_dict[parent] for parent in parents])
@@ -103,9 +104,9 @@ def load_network(file_name, time_steps: int):
         parent1.children.append(new_node)
         parent2.children.append(new_node)
 
-        new_node.table.update({(1, 1): 1 - 0.16 / (weight ** 2),
-                               (1, 0): 1 - 0.4 / weight,
-                               (0, 1): 1 - 0.4 / weight,
+        new_node.table.update({(1, 1): (1 - 0.16) / weight,
+                               (1, 0): (1 - 0.4) / weight,
+                               (0, 1): (1 - 0.4) / weight,
                                (0, 0): spontaneous_block_prob})
         new_node.initialized = True
 
@@ -150,29 +151,39 @@ def add_evidence(evidence):
 def reasoning(evidence):
     res = utils.promptMenu("Which type of reasoning do you want to do?", {"All vertices seperatly": 0,
                                                                           "All edges seperatly": 1,
-                                                                          "Set of edges": 2})
+                                                                          "Set of edges": 2,
+                                                                          'Find best path between 2 nodes':3})
 
     if res == 0:
+        print('\nReasoning about query...\n')
         verteces = list(global_nodes_types_dict["vertex"].keys())
         resulting_join_distribution = likelihood_weightening(verteces,
                                                              evidence, global_nodes_types_dict,
                                                              global_number_of_iterations)
+        if len(resulting_join_distribution) == 0:
+            print('There seems to be a contradiction in given evidence!\nPlease reset evidence (or don\'t if you believe that there is just very low probability for this evidence) and try again!')
+            return
         resulting_destributions = {}
-        print(resulting_join_distribution)
         for i, vertex in zip(range(len(verteces)), verteces):
             summ = 0
             for values, join_prob in resulting_join_distribution.items():
                 if values[i] == 1:
                     summ += join_prob
             resulting_destributions[vertex] = summ
-
-        print(resulting_destributions)
-
+        print('Result of query:\n')
+        for v in resulting_destributions:
+            print(f'\nVERTEX {v}:')
+            print('Pr(Evacuees V%s) = %f'%(v,resulting_destributions[v]))
+            print('Pr(~Evacuees V%s) = %f'%(v,1-resulting_destributions[v]))
+            print('\n')
     elif res == 1:
-        edges = [node for type, nodes in global_nodes_types_dict.items() if "edge" in type for node in nodes.keys()]
+        print('\nReasoning about query...\n')
+        edges = [node for t, nodes in global_nodes_types_dict.items() if "edge" in t for node in nodes.keys()]
         resulting_join_distribution = likelihood_weightening(edges,
                                                         evidence, global_nodes_types_dict, global_number_of_iterations)
-
+        if len(resulting_join_distribution) == 0:
+            print('There seems to be a contradiction in given evidence!\nPlease reset evidence and try again!')            
+            return
         resulting_destributions = {}
 
         for i, edge in zip(range(len(edges)), edges):
@@ -181,38 +192,72 @@ def reasoning(evidence):
                 if values[i] == 1:
                     summ += join_prob
             resulting_destributions[edge] = summ
-
-        print(resulting_destributions)
+        print('Result of query:\n')
+        for e in resulting_destributions:
+            e_name = f'({",".join(e.split("_")[1:])})'
+            t = e.split("_")[0]
+            print('Edge%s at time-step=%s:'%(e_name,t))
+            print('Pr(Blocakge E%s) = %f'%(e_name,resulting_destributions[e]))
+            print('Pr(~Blocakge E%s) = %f'%(e_name,1-resulting_destributions[e]))
+            print('\n')
 
     elif res == 2:
         node1 = 0
-        required_path = []
-        while 1:
-            node1 = utils.promptIntegerFromRange("Please enter node or -1 if you finished",
-                                                 global_nodes + [-1])
-            if node1 == -1:
-                break
-            required_path.append(node1)
-
+        required_path = utils.promptPath(global_nodes)
+        required_path = list(sorted(required_path,key=lambda x: int(x)))
+        time = utils.promptIntegerFromRange("Please enter time", list(range(0, global_max_time + 1)))
+        print('\nReasoning about query...\n')
         edges = []
         for i in range(len(required_path)-1):
             node1 = required_path[i]
             node2 = required_path[i+1]
 
-            edges.append("0_"+str(min(node1,node2)) + "_" + str(max(node1,node2)))
+            edges.append(f"{time}_"+str(min(node1,node2)) + "_" + str(max(node1,node2)))
         resulting_join_distribution = likelihood_weightening(edges,
                                                                  evidence, global_nodes_types_dict,global_number_of_iterations)
-
+        if len(resulting_join_distribution) == 0:
+            print('There seems to be a contradiction in given evidence!\nPlease reset evidence and try again!')
+            return
         all_not_blocked = tuple ([0]*(len(required_path) - 1))
-
-        print(resulting_join_distribution[all_not_blocked])
+        path_p = ','.join([f'~Blocakge E({",".join(e.split("_")[1:])})' for e in edges])
+        print('Result of query:\n')
+        print('Pr(%s) = %f'%(path_p,resulting_join_distribution[all_not_blocked]))
+    elif res == 3:
+        node1 = utils.promptIntegerFromRange("Please enter node 1", global_nodes)
+        node2 = utils.promptIntegerFromRange("Please enter node 2", global_nodes)
+        required_paths = utils.findAllSimplePaths(node1,node2,global_nodes,global_edge_weights)
+        time = 1
+        print('\nReasoning about query...\n')
+        paths_considered = []
+        for required_path in required_paths:
+            edges = []
+            key = '->'.join([str(n) for n in required_path])
+            for i in range(len(required_path)-1):
+                node1 = required_path[i]
+                node2 = required_path[i+1]
+                edges.append(f"{time}_"+str(min(node1,node2)) + "_" + str(max(node1,node2)))
+            resulting_join_distribution = likelihood_weightening(edges,
+                                                                    evidence, global_nodes_types_dict,global_number_of_iterations)
+            if len(resulting_join_distribution) == 0:
+                print('There seems to be a contradiction in given evidence!\nPlease reset evidence and try again!')
+                return
+            all_not_blocked = tuple ([0]*(len(required_path) - 1))
+            path_p = ','.join([f'~Blocakge E({",".join(e.split("_")[1:])})' for e in edges])
+            paths_considered.append((key,resulting_join_distribution[all_not_blocked],path_p))
+        paths_considered = sorted(paths_considered,key=lambda x: -x[1])
+        print('Result of query:\n')
+        for i,(k,p,s) in enumerate(paths_considered):
+            print(f'\n=====The considered path {k} is ranked ({i+1}/{len(paths_considered)})=====\n')
+            print('Pr(%s) = %f'%(s,p))
+            
+    
 
 
 def main_menu():
     q = False
     evidence = {}
     while not q:
-        res = utils.promptMenu("Choose an action", {"Reset evidence": (lambda: evidence.clear()),
+        res = utils.promptMenu("\n\nChoose an action\n", {"Reset evidence": (lambda: evidence.clear()),
                                                     "Add evidence": (lambda: add_evidence(evidence)),
                                                     "Do reasoning": lambda: reasoning(evidence),
                                                     "Quit": lambda: True})
@@ -220,6 +265,6 @@ def main_menu():
 
 
 if __name__ == '__main__':
-    load_network(input_file, 1)
+    global_max_time = 3
+    load_network(input_file, global_max_time)
     main_menu()
-    print(likelihood_weightening(["0_1_2"], {"1": 0, "2": 0, "1_1_2": 1}, global_nodes_types_dict, 1000))
