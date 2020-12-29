@@ -173,8 +173,8 @@ def reasoning(evidence):
         print('Result of query:\n')
         for v in resulting_destributions:
             print(f'\nVERTEX {v}:')
-            print('Pr(Evacuees V%s) = %f'%(v,resulting_destributions[v]))
-            print('Pr(~Evacuees V%s) = %f'%(v,1-resulting_destributions[v]))
+            print('Pr(Evacuees V%s | Evidence) = %f'%(v,resulting_destributions[v]))
+            print('Pr(~Evacuees V%s | Evidence) = %f'%(v,abs(1-resulting_destributions[v])))
             print('\n')
     elif res == 1:
         print('\nReasoning about query...\n')
@@ -197,8 +197,8 @@ def reasoning(evidence):
             e_name = f'({",".join(e.split("_")[1:])})'
             t = e.split("_")[0]
             print('Edge%s at time-step=%s:'%(e_name,t))
-            print('Pr(Blocakge E%s) = %f'%(e_name,resulting_destributions[e]))
-            print('Pr(~Blocakge E%s) = %f'%(e_name,1-resulting_destributions[e]))
+            print('Pr(Blocakge E%s | Evidence) = %f'%(e_name,resulting_destributions[e]))
+            print('Pr(~Blocakge E%s | Evidence) = %f'%(e_name,abs(1-resulting_destributions[e])))
             print('\n')
 
     elif res == 2:
@@ -215,7 +215,7 @@ def reasoning(evidence):
         all_not_blocked = tuple ([0]*(len(edges)))
         path_p = ','.join([f'~Blocakge E({",".join(e.split("_")[1:])})' for e in edges])
         print('Result of query:\n')
-        print('Pr(%s) = %f'%(path_p,resulting_join_distribution[all_not_blocked]))
+        print('Pr(%s | Evidence) = %f'%(path_p,resulting_join_distribution[all_not_blocked]))
     elif res == 3:
         node1 = utils.promptIntegerFromRange("Please enter node 1", global_nodes)
         node2 = utils.promptIntegerFromRange("Please enter node 2", global_nodes)
@@ -242,21 +242,35 @@ def reasoning(evidence):
         print('Result of query:\n')
         for i,(k,p,s) in enumerate(paths_considered):
             print(f'\n=====The considered path {k} is ranked ({i+1}/{len(paths_considered)})=====\n')
-            print('Pr(%s) = %f'%(s,p))
+            print('Pr(%s | Evidence) = %f'%(s,p))
             
     
-
+def printEvidence(evidence):
+    if len(evidence) == 0:
+        print('\nEvidence is currently empty!\n')
+    else:
+        print('\nCurrent Evidence:\n')
+        for k in evidence:
+            split = k.split('_')
+            if len(split) == 1: #vertex
+                print('Pr(Evacuees V%s) = %f'%(k[0],evidence[k]))
+                print('Pr(~Evacuees V%s) = %f\n'%(k[0],1-evidence[k]))
+            else:
+                e_name = f'({",".join(split[1:])})'
+                t = split[0]
+                print('Pr(Blocakge E%s | t=%s) = %f'%(e_name,t,evidence[k]))
+                print('Pr(~Blocakge E%s | t=%s) = %f\n'%(e_name,t,1-evidence[k])) 
 
 def main_menu():
     q = False
     evidence = {}
     while not q:
         res = utils.promptMenu("\n\nChoose an action\n", {"Reset evidence": (lambda: evidence.clear()),
+                                                    "Display Evidence": lambda: printEvidence(evidence),
                                                     "Add evidence": (lambda: add_evidence(evidence)),
                                                     "Do reasoning": lambda: reasoning(evidence),
                                                     "Quit": lambda: True})
         q = res()
-
 
 if __name__ == '__main__':
     global_max_time = 3
