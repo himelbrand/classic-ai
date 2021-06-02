@@ -34,7 +34,6 @@ class BeliefState:
     def __str__(self):
         v_string = f'V{self.vertex}'
         e_string = [f'P(Blocked E{e})={self.belief[e]}' for e in self.belief]
-        # print(self.value,self.cost)
         value_string = '\t\t\t\tV(s)=%f'%(self.value+self.cost)
         action_string = f'\t\t\t\tOptimal action: {"traverse to V" if self.next is not None else "terminate"}{self.next.vertex if self.next is not None else ""}'
         state_string = f'Belief state -  s=({v_string}, {", ".join(e_string)})\n{value_string}\n{action_string}'

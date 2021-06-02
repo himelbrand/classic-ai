@@ -11,6 +11,5 @@ def do(lst):
     sum1 = sum(mul1)
     return [item / sum1 for item in mul1]
 
-
-# print(do([[0.84,0.2,0.3,1],[0.6,0.2,0.7,1],[0.6,0.8,0.3,1],[0.001,0.8,0.7,1]]))
+#sanity check
 print(do([[0.84, 0.2, 0.3, 1], [0.6, 0.8, 0.3, 1]]))
